@@ -174,7 +174,7 @@ def customize_column_mapping(current_full_map, extra_columns=None, date_mode='st
     Wyświetla mapowanie dla kolumn systemowych oraz kolumn wybranych jako extra.
     Ukrywa/Pokazuje kolumny specyficzne dla trybu daty.
     """
-    print("\n--- MAPOWANIE NAZW (NOTION) ---")
+    print("\n--- MAPOWANIE NAZW ---")
 
     if extra_columns is None:
         extra_columns = []
