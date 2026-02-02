@@ -5,19 +5,22 @@ import os
 import csv
 import json
 from io import StringIO
-
+#Program działa super
+#Jedyne co do naprawy to
+#1. Zrobić tak żeby mozna było wybrać dowolne kolumny (co najmniej1)
+#2. Podmienić nazwy kolumn podczas wyboru które zachować żeby dało się zrozumieć o co chodzi
 # --- PLIK KONFIGURACYJNY ---
 CONFIG_FILE = 'settings.json'
 
 # --- DOMYŚLNE MAPOWANIE (Klucze to kolumny WYMAGANE w pliku źródłowym) ---
 DEFAULT_MAPA_KOLUMN = {
-    'Data': 'Encounter Date',
-    'Tytuł': 'The Racket',
+    'Data': 'Date',
+    'Tytuł': 'Przedmiot',
     'Ogłoszony początek': 'Od',
     'Ogłoszony koniec': 'Do',
     'Miejsce': 'Venue',
-    'Typ': 'Encounter Type',
-    'Data_End_Integrated': 'Encounter End'  # NOWE: Domyślna nazwa dla kolumny końca w trybie Integrated
+    'Typ': 'Type',
+    'Data_End_Integrated': 'End Date'
 }
 
 # --- DOMYŚLNA KONFIGURACJA ---
