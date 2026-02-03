@@ -335,7 +335,7 @@ def select_columns_ui(all_columns, preselected_extras, required_columns, date_mo
             elif col == 'Data_End_Integrated':
                 display_name = "Data zakończenia"; note = " (kolumna wtórna)"
             elif col in FRIENDLY_NAME_MAP:
-                display_name = {FRIENDLY_NAME_MAP[col]}
+                display_name = f'{FRIENDLY_NAME_MAP[col]}'
 
             print(f"{i + 1:2}. {status} {display_name}{note}")
 
