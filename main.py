@@ -9,6 +9,7 @@ from io import StringIO
 #Jedyne co do naprawy to
 #1. Zrobić tak żeby mozna było wybrać dowolne kolumny (co najmniej1)
 #2. Podmienić nazwy kolumn podczas wyboru które zachować żeby dało się zrozumieć o co chodzi
+#3. Pliki debug powinny się zapisywać jako debug.xlsx
 # --- PLIK KONFIGURACYJNY ---
 CONFIG_FILE = 'settings.json'
 
@@ -441,9 +442,9 @@ def main():
 
     while True:
         print("\n" + "=" * 50)
-        print("1. Wczytaj plik")
+        print("1. 📄Wczytaj plik")
         print("2. ⚙️ Konfiguracja QUICK")
-        print("3. Wyjście")
+        print("3. 🔚 Wyjście")
 
         ch = input("Wybór: ").strip()
         if ch == '3' or ch.lower() in ['q', 'exit']: break
