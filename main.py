@@ -5,38 +5,64 @@ import os
 import csv
 import json
 from io import StringIO
-#Program działa super
-#Jedyne co do naprawy to
-#1. Zrobić tak żeby mozna było wybrać dowolne kolumny (co najmniej1)
-#2. Podmienić nazwy kolumn podczas wyboru które zachować żeby dało się zrozumieć o co chodzi
-#3. Pliki debug powinny się zapisywać jako debug.xlsx
+
 # --- PLIK KONFIGURACYJNY ---
 CONFIG_FILE = 'settings.json'
 
-# --- DOMYŚLNE MAPOWANIE (Klucze to kolumny WYMAGANE w pliku źródłowym) ---
-DEFAULT_MAPA_KOLUMN = {
-    'Data': 'Data',
-    'Tytuł': 'Przedmiot',
-    'Ogłoszony początek': 'Godzina rozpoczęcia',
-    'Ogłoszony koniec': 'Godzina zakończenia',
+# --- DEFINICJA LOGICZNEJ KOLEJNOŚCI (DLA UI ORAZ SORTOWANIA WYNIKU) ---
+# To zapewnia, że wszędzie kolumny wyświetlają się w tej samej, logicznej grupie
+LOGICAL_ORDER = [
+    'Name',  # Kod przedmiotu
+    'Tytuł',  # Nazwa przedmiotu
+    'Typ',  # Typ zajęć
+    'Data',  # Data (lub Data start w integrated)
+    'Ogłoszony początek',  # Godzina start (standard)
+    'Data_End_Integrated',  # Data koniec (integrated)
+    'Ogłoszony koniec',  # Godzina koniec (standard)
+    'Miejsce',  # Sala
+    'Prowadzący / Odpowiedzialny',
+    'Pojemność'
+]
+
+# --- PRZYJAZNE NAZWY DLA MENU WYBORU (TYLKO WYŚWIETLANIE) ---
+FRIENDLY_NAME_MAP = {
+    'Tytuł': 'Nazwa przedmiotu',
+    'Ogłoszony początek': 'Od (godzina)',
+    'Ogłoszony koniec': 'Do (godzina)',
     'Miejsce': 'Sala',
+    'Pojemność': 'Pojemność sali',
+    'Prowadzący / Odpowiedzialny': 'Prowadzący',
+    'Name': 'Kod przedmiotu',
+    'Data_End_Integrated': 'Data zakończenia',
+    'Typ': 'Typ zajęć'
+}
+
+# --- DOMYŚLNE MAPOWANIE ---
+DEFAULT_MAPA_KOLUMN = {
+    'Name': 'Kod przedmiotu',
+    'Tytuł': 'Nazwa przedmiotu',
+    'Ogłoszony początek': 'Od',
+    'Ogłoszony koniec': 'Do',
+    'Miejsce': 'Sala',
+    'Pojemność': 'Pojemność sali',
+    'Prowadzący / Odpowiedzialny': 'Prowadzący',
     'Typ': 'Typ',
-    'Data_End_Integrated': 'Data końca zajęć'
+    'Data': 'Data',
+    'Data_End_Integrated': 'Data zakończenia'
 }
 
 # --- DOMYŚLNA KONFIGURACJA ---
 DEFAULT_CONFIG = {
     'quick_settings': {
-        'type_mode': 'simple',  # 'simple' / 'detailed'
-        'date_mode': 'integrated',  # 'integrated' / 'standard'
-        'save_format': 'both',  # 'csv' / 'xlsx' / 'both'
-        'extra_columns': []  # Lista nazw dodatkowych kolumn do zachowania
+        'type_mode': 'simple',
+        'date_mode': 'integrated',
+        'save_format': 'both',
+        'extra_columns': []
     },
     'column_mapping': DEFAULT_MAPA_KOLUMN.copy(),
     'prefixes': {}
 }
 
-# --- ZMIENNA GLOBALNA NA KONFIGURACJĘ ---
 CURRENT_CONFIG = DEFAULT_CONFIG.copy()
 
 
@@ -83,8 +109,7 @@ def load_data(path):
         with open(path, 'r', encoding='windows-1250') as f:
             lines = f.readlines()
 
-    if not lines:
-        raise ValueError("Plik jest pusty!")
+    if not lines: raise ValueError("Plik jest pusty!")
 
     first_line = lines[0].strip()
     if first_line.startswith('"') and ',""' in first_line:
@@ -140,9 +165,8 @@ def filter_data_interactive(df):
         print("1. Usuń całe PRZEDMIOTY")
         print("2. Usuń całe TYPY zajęć")
         print("3. Dalej")
-        choice = input("Wybór: ").strip()
+        choice = input("Wybór [1/2/3]: ").strip()
         if choice == '3': break
-
         if choice == '1':
             items = sorted(df['Tytuł'].unique().tolist())
             print(f"\nZnalezione przedmioty:")
@@ -171,62 +195,57 @@ def filter_data_interactive(df):
     return df
 
 
-# --- POPRAWIONE MAPOWANIE (Synchronizacja z extra_columns i date_mode) ---
+# --- POPRAWIONE MAPOWANIE ---
 
-def customize_column_mapping(current_full_map, extra_columns=None, date_mode='standard'):
-    """
-    Wyświetla mapowanie dla kolumn systemowych oraz kolumn wybranych jako extra.
-    Ukrywa/Pokazuje kolumny specyficzne dla trybu daty.
-    """
+def customize_column_mapping(current_full_map, active_columns, date_mode='standard'):
     print("\n--- MAPOWANIE NAZW ---")
 
-    if extra_columns is None:
-        extra_columns = []
+    # 1. Przygotowanie listy kluczy
+    keys_to_show = [col for col in active_columns]
+    if 'Name' not in keys_to_show: keys_to_show.insert(0, 'Name')
+    if date_mode == 'integrated' and 'Data_End_Integrated' not in keys_to_show:
+        keys_to_show.append('Data_End_Integrated')
+    if date_mode == 'integrated':
+        if 'Ogłoszony początek' in keys_to_show: keys_to_show.remove('Ogłoszony początek')
+        if 'Ogłoszony koniec' in keys_to_show: keys_to_show.remove('Ogłoszony koniec')
 
-    # Zmiana 1: Dynamiczna lista kluczy w zależności od trybu daty
-    req_keys = ['Data', 'Tytuł', 'Miejsce', 'Typ']
-
-    if date_mode == 'standard':
-        req_keys.extend(['Ogłoszony początek', 'Ogłoszony koniec'])
-    else:
-        # W trybie integrated dodajemy naszą wirtualną kolumnę
-        req_keys.append('Data_End_Integrated')
+    # 2. Sortowanie wyświetlania zgodnie z LOGICAL_ORDER
+    # Zapewnia to, że mapowanie ma taką samą kolejność jak wybór kolumn
+    sorted_keys = []
+    for k in LOGICAL_ORDER:
+        if k in keys_to_show: sorted_keys.append(k)
+    for k in keys_to_show:
+        if k not in sorted_keys: sorted_keys.append(k)
+    keys_to_show = sorted_keys
 
     display_map = {}
-
-    for k in req_keys:
-        # Pobieramy nazwę z mapy, a jak nie ma to z domyślnej
+    for k in keys_to_show:
         display_map[k] = current_full_map.get(k, DEFAULT_MAPA_KOLUMN.get(k, k))
 
-    for k in extra_columns:
-        if k not in req_keys:
-            display_map[k] = current_full_map.get(k, k)
+    for k in keys_to_show:
+        target_name = display_map.get(k, k)
+        source_label = k
+        if k == 'Name':
+            source_label = "Kod przedmiotu (ID)"
+        elif k == 'Data_End_Integrated':
+            source_label = "Data zakończenia"
+        elif k in FRIENDLY_NAME_MAP:
+            source_label = f"{FRIENDLY_NAME_MAP[k]} ({k})"
+        print(f"  * {source_label:35} -> {target_name}")
 
-    # Wyświetlanie
-    for k in req_keys:
-        label = k
-        if k == 'Data_End_Integrated':
-            label = "Data (Koniec - Integrated)"
-        print(f"  * {label:30} -> {display_map[k]}")
-
-    other_keys = sorted([k for k in display_map.keys() if k not in req_keys])
-    if other_keys:
-        print("  --- Dodatkowe ---")
-        for k in other_keys:
-            print(f"  * {k:30} -> {display_map[k]}")
-
-    if input("\nZmienić nazwy docelowe? (t/n): ").strip().lower() != 't':
-        return display_map
+    if input("\nZmienić nazwy docelowe? (t/n): ").strip().lower() != 't': return display_map
 
     print("\nWpisz nową nazwę lub ENTER by zostawić.")
-    for src in req_keys + other_keys:
+    for src in keys_to_show:
         label = src
-        if src == 'Data_End_Integrated':
-            label = "Data (Koniec - Integrated)"
-
-        val = input(f"'{label}' -> [{display_map[src]}]: ").strip()
-        if val:
-            display_map[src] = val
+        if src == 'Name':
+            label = "Kod przedmiotu (ID)"
+        elif src == 'Data_End_Integrated':
+            label = "Data zakończenia"
+        elif src in FRIENDLY_NAME_MAP:
+            label = FRIENDLY_NAME_MAP[src]
+        val = input(f"'{label}' -> [{display_map.get(src, src)}]: ").strip()
+        if val: display_map[src] = val
 
     global CURRENT_CONFIG
     CURRENT_CONFIG['column_mapping'].update(display_map)
@@ -237,10 +256,7 @@ def customize_column_mapping(current_full_map, extra_columns=None, date_mode='st
 def customize_prefixes(df, col_title_name):
     print("\n--- KONFIGURACJA SKRÓTÓW ID (PREFIX) ---")
     courses = df[col_title_name].unique()
-
-    # Zmiana 3: Ładowanie istniejących prefixów z konfiga
     prefix_map = CURRENT_CONFIG.get('prefixes', {}).copy()
-
     for c in courses:
         clean_name = clean_text_for_notion(c)
         default_val = get_prefix_default(clean_name)
@@ -248,65 +264,101 @@ def customize_prefixes(df, col_title_name):
         print(f"  * {clean_name:30} [{current_val}]")
 
     if input("\nEdytować skróty? (t/n): ").strip().lower() != 't':
-        # Jeśli nie edytujemy, zwracamy to co mamy (uzupełnione o domyślne dla nowych przedmiotów)
         final_map = prefix_map.copy()
         for c in courses:
             clean_name = clean_text_for_notion(c)
-            if clean_name not in final_map:
-                final_map[clean_name] = get_prefix_default(clean_name)
+            if clean_name not in final_map: final_map[clean_name] = get_prefix_default(clean_name)
         return final_map
 
     print("Wpisz skrót lub ENTER dla domyślnego.")
     for c in courses:
         clean_name = clean_text_for_notion(c)
         default_val = prefix_map.get(clean_name, get_prefix_default(clean_name))
-
         user_p = input(f"Skrót dla '{clean_name}' [{default_val}]: ").strip().upper()
         prefix_map[clean_name] = user_p if user_p else default_val
-
-    # Zmiana 3: Zapis do konfiga
     CURRENT_CONFIG['prefixes'] = prefix_map
     save_config()
     return prefix_map
 
 
-def select_columns_ui(all_columns, preselected_extras, required_columns):
+def select_columns_ui(all_columns, preselected_extras, required_columns, date_mode='standard'):
     selected_extras = set(preselected_extras)
-    selected_extras = {c for c in selected_extras if c in all_columns}
+
+    # 1. Przygotowanie dostępnych kolumn
+    virtual_cols = ['Name', 'Data_End_Integrated']
+    available_cols = list(virtual_cols)
+    for c in all_columns:
+        if c not in available_cols: available_cols.append(c)
+
+    # 2. Sortowanie logiczne w menu wg LOGICAL_ORDER
+    sorted_available = []
+    # Dodaj priorytetowe
+    for key in LOGICAL_ORDER:
+        if key in available_cols:
+            sorted_available.append(key)
+    # Dodaj resztę
+    for c in available_cols:
+        if c not in sorted_available:
+            sorted_available.append(c)
+
+    available_cols = sorted_available
+
+    # 3. Obsługa Domyślnych Zaznaczeń (Jeśli lista jest pusta)
+    # Usuwamy śmieci z zaznaczenia na start
+    selected_extras = {c for c in selected_extras if c in available_cols}
+
+    if not selected_extras:
+        # Domyślne zestawienie
+        defaults = {'Name', 'Tytuł', 'Typ', 'Miejsce', 'Data'}
+
+        if date_mode == 'standard':
+            defaults.add('Ogłoszony początek')
+            defaults.add('Ogłoszony koniec')
+        elif date_mode == 'integrated':
+            defaults.add('Data_End_Integrated')
+
+        for d in defaults:
+            if d in available_cols:
+                selected_extras.add(d)
 
     while True:
         print("\n--- WYBÓR KOLUMN DO ZACHOWANIA ---")
-        print("Lp.  Stan   Nazwa kolumny")
-        print("-" * 40)
+        print("Lp.  Stan    Nazwa kolumny")
+        print("-" * 50)
 
-        for i, col in enumerate(all_columns):
-            if col in required_columns:
-                status = "[REQ]"
-                desc = "(Wymagana systemowo)"
-            else:
-                status = "[ x ]" if col in selected_extras else "[   ]"
-                desc = ""
-            print(f"{i + 1:2}. {status} {col} {desc}")
+        for i, col in enumerate(available_cols):
+            status = "[ x ]" if col in selected_extras else "[   ]"
+            display_name = col
+            note = ""
+            if col == 'Name':
+                display_name = "Kod przedmiotu"; note = " (kolumna wtórna)"
+            elif col == 'Data_End_Integrated':
+                display_name = "Data zakończenia"; note = " (kolumna wtórna)"
+            elif col in FRIENDLY_NAME_MAP:
+                display_name = {FRIENDLY_NAME_MAP[col]}
 
-        print("-" * 40)
-        print("Wpisz numer kolumny, aby przełączyć [x]/[ ].")
-        print("Wpisz 'ok' lub wciśnij ENTER, aby zatwierdzić.")
+            print(f"{i + 1:2}. {status} {display_name}{note}")
+
+        print("-" * 50)
+        print("Wpisz numer kolumny, aby przełączyć jej stan ([x]/[ ]).")
+        print("Aby zatwierdzić wybór (musi być zaznaczona min. 1), wpisz 'ok' lub naciśnij ENTER.")
         choice = input(">> ").strip().lower()
 
-        if choice in ['ok', '']: break
+        if choice in ['ok', '', ' ']:
+            if len(selected_extras) >= 1:
+                break
+            else:
+                print("⚠️ BŁĄD: Musisz wybrać co najmniej jedną kolumnę!"); continue
 
         try:
             nums = [int(x) - 1 for x in choice.replace(',', ' ').split() if x.strip().isdigit()]
             for idx in nums:
-                if 0 <= idx < len(all_columns):
-                    col_name = all_columns[idx]
-                    if col_name not in required_columns:
-                        if col_name in selected_extras:
-                            selected_extras.remove(col_name)
-                        else:
-                            selected_extras.add(col_name)
+                if 0 <= idx < len(available_cols):
+                    col_name = available_cols[idx]
+                    if col_name in selected_extras:
+                        selected_extras.remove(col_name)
                     else:
-                        print(f"⚠️ Kolumna '{col_name}' jest wymagana.")
+                        selected_extras.add(col_name)
         except:
             pass
 
@@ -318,88 +370,90 @@ def select_columns_ui(all_columns, preselected_extras, required_columns):
 def configure_quick_settings():
     global CURRENT_CONFIG
     qc = CURRENT_CONFIG['quick_settings']
-
     print("\n--- ⚙️ KONFIGURACJA TRYBU QUICK ---")
 
-    # 1. Typy
     print(f"\n1. TYPY ZAJĘĆ [Obecnie: {qc['type_mode']}]")
     print("   1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
     print("   2 = Detailed (Zachowuje oryginalne skróty: CWP, CWL, KON)")
-    sel = input("   Wybór (1/2, ENTER=Bez zmian): ").strip()
+    sel = input("   Wybór [1/2, ENTER=Bez zmian]: ").strip()
     if sel == '1': qc['type_mode'] = 'simple'
     if sel == '2': qc['type_mode'] = 'detailed'
 
-    # 2. Daty
     print(f"\n2. FORMAT DATY [Obecnie: {qc['date_mode']}]")
     print("   1 = Standard   (Osobne kolumny: 'Data', 'Od', 'Do')")
     print("   2 = Integrated (Kolumny scalone: 'Data' (data+start) i 'Do' (data+koniec))")
-    sel = input("   Wybór (1/2, ENTER=Bez zmian): ").strip()
+    sel = input("   Wybór [1/2, ENTER=Bez zmian]: ").strip()
     if sel == '1': qc['date_mode'] = 'standard'
     if sel == '2': qc['date_mode'] = 'integrated'
 
-    # 3. Zapis
     print(f"\n3. FORMAT PLIKU [Obecnie: {qc['save_format']}]")
     print("   1 = CSV")
     print("   2 = XLSX")
     print("   3 = Both (Oba formaty)")
-    sel = input("   Wybór (1/2/3, ENTER=Bez zmian): ").strip()
+    sel = input("   Wybór [1/2/3, ENTER=Bez zmian]: ").strip()
     if sel == '1': qc['save_format'] = 'csv'
     if sel == '2': qc['save_format'] = 'xlsx'
     if sel == '3': qc['save_format'] = 'both'
 
-    # 4. Kolumny
     extras = qc.get('extra_columns', [])
     print(f"\n4. DODATKOWE KOLUMNY [Wybrane: {len(extras)}]")
     if extras:
-        print(f"   Lista: {', '.join(extras)}")
+        # Sortujemy również wyświetlanie w podglądzie
+        pretty = []
+        # Sortowanie wg LOGICAL_ORDER
+        sorted_extras = []
+        for k in LOGICAL_ORDER:
+            if k in extras: sorted_extras.append(k)
+        for k in extras:
+            if k not in sorted_extras: sorted_extras.append(k)
+
+        for e in sorted_extras:
+            if e == 'Name':
+                pretty.append('Kod przedmiotu')
+            elif e == 'Data_End_Integrated':
+                pretty.append('Data zakończenia')
+            elif e in FRIENDLY_NAME_MAP:
+                pretty.append(FRIENDLY_NAME_MAP[e])
+            else:
+                pretty.append(e)
+        print(f"   Lista: {', '.join(pretty)}")
     else:
         print("   (Brak dodatkowych kolumn)")
 
     if input("   Edytować listę? (t/n): ").strip().lower() == 't':
         print("\n   Aby wybrać kolumny, potrzebuję przykładowego pliku CSV.")
         path = input("   Podaj ścieżkę do pliku: ").strip().strip('"')
-
         if os.path.exists(path):
             try:
-                try:
-                    df_dummy = pd.read_csv(path, sep=',', nrows=0, encoding='utf-8')
-                except:
-                    df_dummy = pd.read_csv(path, sep=';', nrows=0, encoding='utf-8')
+                raw = load_data(path)
+                # Cleanup dla konfiguracji
+                bad_cols = ['Zatwierdzony', 'Żądane usługi', 'Unnamed: 16', 'Nazwa']
+                raw.drop(columns=[c for c in bad_cols if c in raw.columns], inplace=True)
 
-                all_cols = df_dummy.columns.tolist()
+                all_cols = raw.columns.tolist()
                 req_cols = list(DEFAULT_MAPA_KOLUMN.keys())
-
-                new_extras = select_columns_ui(all_cols, extras, req_cols)
+                # Przekazujemy date_mode, żeby poprawnie ustalić domyślne zaznaczenia
+                new_extras = select_columns_ui(all_cols, extras, req_cols, date_mode=qc['date_mode'])
                 qc['extra_columns'] = new_extras
-                extras = new_extras
-                print(f"   ✅ Zaktualizowano listę: {new_extras}")
+                print(f"   ✅ Zaktualizowano listę.")
             except Exception as e:
-                print(f"   ❌ Błąd odczytu pliku: {e}")
+                print(f"   ❌ Błąd: {e}")
         else:
             print("   ❌ Plik nie istnieje.")
 
-    # 5. Mapowanie (Synchronizowane)
     print(f"\n5. NAZWY KOLUMN (MAPOWANIE)")
     if input("   Edytować? (t/n): ").strip().lower() == 't':
-        # Przekazujemy date_mode, żeby pokazać odpowiednie pole dla końca daty
-        customize_column_mapping(CURRENT_CONFIG['column_mapping'], extras, qc['date_mode'])
-        print("   ✅ Mapowanie zaktualizowane.")
-
-    # 6. Prefiksy (NOWE)
-    print(f"\n6. SKRÓTY ID (PREFIX)")
+        customize_column_mapping(CURRENT_CONFIG['column_mapping'], qc['extra_columns'], qc['date_mode'])
+    print(f"\n6. SKRÓTY ID")
     if input("   Edytować? (t/n): ").strip().lower() == 't':
         print("\n   Aby skonfigurować skróty, potrzebuję przykładowego pliku CSV.")
         path = input("   Podaj ścieżkę do pliku: ").strip().strip('"')
         if os.path.exists(path):
             try:
                 df_raw = load_data(path)
-                if not df_raw.empty:
-                    # Wywołanie funkcji, która teraz zapisuje do configa
-                    customize_prefixes(df_raw, 'Tytuł')
+                if not df_raw.empty: customize_prefixes(df_raw, 'Tytuł')
             except Exception as e:
                 print(f"   ❌ Błąd: {e}")
-        else:
-            print("   ❌ Plik nie istnieje.")
 
     CURRENT_CONFIG['quick_settings'] = qc
     save_config()
@@ -410,15 +464,13 @@ def process_schedule_ranges(df):
     day_map = {'Pn': 0, 'Wt': 1, 'Śr': 2, 'Cz': 3, 'Pt': 4, 'So': 5, 'Nd': 6}
     new_rows = []
     for _, row in df.iterrows():
-        s_str = row['Pierwszy dzień']
-        e_str = row['Ostatni dzień']
+        s_str = row['Pierwszy dzień'];
+        e_str = row['Ostatni dzień'];
         d_str = row['Dzień tygodnia']
         if pd.isna(s_str): continue
-
         s_date = pd.to_datetime(s_str, dayfirst=True)
         e_date = pd.to_datetime(e_str, dayfirst=True) if not pd.isna(e_str) else s_date
         days = parse_days_of_week(d_str, day_map)
-
         if not days:
             r = row.to_dict();
             r['Data'] = s_date.date();
@@ -442,7 +494,7 @@ def main():
 
     while True:
         print("\n" + "=" * 50)
-        print("1. 📄Wczytaj plik")
+        print("1. 📄 Wczytaj plik")
         print("2. ⚙️ Konfiguracja QUICK")
         print("3. 🔚 Wyjście")
 
@@ -451,79 +503,80 @@ def main():
         if ch == '2': configure_quick_settings(); continue
         if ch != '1': continue
 
-        # 1. Load
         path = input("Ścieżka CSV: ").strip().strip('"')
         if not os.path.exists(path): print("❌ Brak pliku."); continue
 
         try:
             raw = load_data(path)
             if 'Pierwszy dzień' not in raw.columns: raw = pd.read_csv(path, sep=';')
+
+            # --- USUWANIE ŚMIECIOWYCH KOLUMN ---
+            cols_to_drop = ['Żądane usługi', 'Unnamed: 16', 'Zatwierdzony', 'Nazwa']
+            existing_to_drop = [c for c in cols_to_drop if c in raw.columns]
+            if existing_to_drop: raw.drop(columns=existing_to_drop, inplace=True)
+
         except Exception as e:
-            print(f"❌ Błąd: {e}");
-            continue
+            print(f"❌ Błąd: {e}"); continue
 
-        print("⏳ Rozwijanie kalendarza...")
+        print("⏳ Rozwijanie kalendarza...");
         df = process_schedule_ranges(raw)
-
-        # 2. Filter Rows
         df = filter_data_interactive(df)
         if df.empty: print("⚠️ Pusto."); continue
 
-        # 3. Mode Selection
         print("\n--- TRYB ---")
         print("1 -> 🚀 QUICK (Automat wg ustawień)")
         print("2 -> 🛠️ CUSTOM (Pełna kontrola)")
         print("3 -> 🐛 DEBUG (Excel, surowe dane)")
 
         mode = ''
-        while mode not in ['1', '2', '3']: mode = input("Wybór: ").strip()
+        while mode not in ['1', '2', '3']: mode = input("Wybór [1/2/3]: ").strip()
 
-        # Inicjalizacja
-        type_mode = 'detailed'
-        date_mode = 'standard'
+        type_mode = 'detailed';
+        date_mode = 'standard';
         save_format = 'xlsx'
         active_map = CURRENT_CONFIG['column_mapping'].copy()
-        custom_prefixes = {}  # Słownik na prefixy
-
-        required_cols = list(DEFAULT_MAPA_KOLUMN.keys())
+        custom_prefixes = {};
         extra_cols = []
+        source_key_cols = ['Data', 'Tytuł', 'Typ', 'Ogłoszony początek', 'Ogłoszony koniec', 'Miejsce']
 
         if mode == '1':  # QUICK
             qc = CURRENT_CONFIG['quick_settings']
-            type_mode = qc['type_mode']
-            date_mode = qc['date_mode']
-            save_format = qc['save_format']
+            type_mode, date_mode, save_format = qc['type_mode'], qc['date_mode'], qc['save_format']
             extra_cols = qc.get('extra_columns', [])
+            if not extra_cols:
+                # Domyślne jeśli pusty config
+                extra_cols = ['Name', 'Tytuł', 'Typ', 'Data', 'Miejsce']
+                if date_mode == 'integrated':
+                    extra_cols.append('Data_End_Integrated')
+                else:
+                    extra_cols.extend(['Ogłoszony początek', 'Ogłoszony koniec'])
 
             active_map = CURRENT_CONFIG['column_mapping'].copy()
-
             df['Tytuł'] = df['Tytuł'].apply(clean_text_for_notion)
             col_t = active_map.get('Tytuł', 'Tytuł')
-
             if 'Tytuł' in df.columns:
                 df = df.rename(columns={'Tytuł': col_t})
-                # Zmiana 3: Ładowanie zapisanych prefixów w trybie Quick
                 custom_prefixes = CURRENT_CONFIG.get('prefixes', {})
                 df = df.rename(columns={col_t: 'Tytuł'})
 
         elif mode == '2':  # CUSTOM
-            all_cols_in_file = df.columns.tolist()
+            all_cols = df.columns.tolist()
             preselected = CURRENT_CONFIG['quick_settings'].get('extra_columns', [])
-
-            extra_cols = select_columns_ui(all_cols_in_file, preselected, required_cols)
-
-            print("\n--- FORMATOWANIE TYPÓW ZAJĘĆ ---")
-            print("1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
-            print("2 = Detailed (Zachowuje oryginalne skróty: CWP, CWL, KON)")
-            if input("Wybór: ") == '1': type_mode = 'simple'
 
             print("\n--- FORMATOWANIE DAT I GODZIN ---")
             print("1 = Standard   (Osobne kolumny: 'Data', 'Od', 'Do')")
             print("2 = Integrated (Kolumny scalone: 'Data' (data+start) i 'Do' (data+koniec))")
-            if input("Wybór: ") == '2': date_mode = 'integrated'
+            if input("Wybór [1/2]: ") == '2': date_mode = 'integrated'
+
+            # Przekazujemy date_mode do UI aby ustalić domyślne zaznaczenia
+            extra_cols = select_columns_ui(all_cols, preselected, source_key_cols, date_mode=date_mode)
+
+            print("\n--- FORMATOWANIE TYPÓW ZAJĘĆ ---")
+            print("1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
+            print("2 = Detailed (Zachowuje oryginalne skróty: CWP, CWL, KON)")
+            if input("Wybór [1/2]: ") == '1': type_mode = 'simple'
 
             active_map = customize_column_mapping(active_map, extra_cols, date_mode)
-
             df['Tytuł'] = df['Tytuł'].apply(clean_text_for_notion)
             col_t = active_map.get('Tytuł', 'Tytuł')
             if 'Tytuł' in df.columns:
@@ -531,119 +584,137 @@ def main():
                 custom_prefixes = customize_prefixes(df, col_t)
                 df = df.rename(columns={col_t: 'Tytuł'})
 
-            print("\n[Zapis] 1=CSV, 2=XLSX, 3=Both");
-            sf = input("Wybór: ")
+            print("\n[Zapis] 1=CSV, 2=XLSX, 3=Both")
+            sf = input("Wybór [1/2/3]: ")
             if sf == '1':
                 save_format = 'csv'
             elif sf == '3':
                 save_format = 'both'
 
-        elif mode == '3':  # DEBUG
-            print("--> DEBUG: Wszystkie kolumny zachowane.")
+        elif mode == '3':
+            extra_cols = df.columns.tolist()
 
         # --- PRZETWARZANIE ---
+        S_TITLE, S_TYPE, S_DATA, S_START, S_END = 'Tytuł', 'Typ', 'Data', 'Ogłoszony początek', 'Ogłoszony koniec'
 
         if mode in ['1', '2']:
-            target_cols = set(required_cols + extra_cols)
-            # Filtrujemy DF przed rename, używając nazw źródłowych
-            keys_to_keep = [k for k in df.columns if k in target_cols]
-            if keys_to_keep:
-                df = df[keys_to_keep]
+            target_cols = set(extra_cols)
+            for sys in [S_TITLE, S_TYPE, S_DATA, S_START, S_END, 'Miejsce']:
+                if sys in df.columns: target_cols.add(sys)
+            keys = [k for k in df.columns if k in target_cols]
+            if keys: df = df[keys]
 
-        C_TITLE = active_map.get('Tytuł', 'Tytuł')
-        C_TYPE = active_map.get('Typ', 'Typ')
-        C_DATE = active_map.get('Data', 'Data')
-        # Używamy nazw źródłowych dla stałych kolumn, bo rename jest później
-        C_START = 'Ogłoszony początek'
-        C_END = 'Ogłoszony koniec'
-
-        if 'Typ' in df.columns:
+        if S_TYPE in df.columns:
             if type_mode == 'simple':
-                df['Typ'] = df['Typ'].apply(lambda x: 'W' if str(x).strip() == 'Wykład' else 'CWA')
+                df[S_TYPE] = df[S_TYPE].apply(lambda x: 'W' if str(x).strip() == 'Wykład' else 'CWA')
             else:
                 def map_d(v):
                     v = str(v).strip()
-                    # Dedykowane skróty
-                    if v == 'Wykład': return 'W'
-                    if v == 'Ćwiczenia projektowe': return 'CWP'
-                    if v == 'Ćwiczenia laboratoryjne': return 'CWL'
-                    if v == 'Konwersatorium': return 'KON'
-                    if v == 'Lektorat': return 'LEK'
-                    if v == 'Ćwiczenia audytoryjne': return 'CWA'
-                    if v == 'Basen' : return 'Basen'
-                    if v == 'Zajęcia Warsztatowe': return 'WAR'
-                    if v == 'Wychowanie fizyczne' : return 'WF'
-                    if v == 'Wychowanie fizyczne2': return 'WF'
+                    m = {'Wykład': 'W', 'Ćwiczenia projektowe': 'CWP', 'Ćwiczenia laboratoryjne': 'CWL',
+                         'Konwersatorium': 'KON', 'Lektorat': 'LEK', 'Ćwiczenia audytoryjne': 'CWA'}
+                    return m.get(v, v[:3].upper())
 
-                    # Jeśli nie znaleziono powyżej -> 3 pierwsze litery wielkimi literami
-                    # np. "Seminarium" -> "SEM", "Projekt" -> "PRO"
-                    return v[:3].upper()
+                df[S_TYPE] = df[S_TYPE].apply(map_d)
+            df[S_TYPE] = df[S_TYPE].astype(str).str.replace(',', '').str.strip()
 
-                df['Typ'] = df['Typ'].apply(map_d)
-            df['Typ'] = df['Typ'].astype(str).str.replace(',', '', regex=False).str.strip()
+        if all(c in df.columns for c in [S_TITLE, S_TYPE, S_DATA, S_START]):
+            df = df.sort_values(by=[S_TITLE, S_TYPE, S_DATA, S_START])
 
-        if all(c in df.columns for c in [C_TITLE, C_TYPE, C_DATE, C_START]):
-            df = df.sort_values(by=[C_TITLE, C_TYPE, C_DATE, C_START])
+            def get_prefix_logic(name): return custom_prefixes.get(name, get_prefix_default(name))
 
-            # Generowanie ID (Prefix)
-            def get_prefix_logic(name):
-                # 1. Sprawdź w custom_prefixes (czy to z configa, czy z ręki)
-                if name in custom_prefixes:
-                    return custom_prefixes[name]
-                # 2. Jeśli brak, generuj domyślny
-                return get_prefix_default(name)
-
-            df['ID_Prefix'] = df[C_TITLE].map(get_prefix_logic)
-            df['ID_Number'] = df.groupby([C_TITLE, C_TYPE]).cumcount() + 1
-
-            def gen_id(row):
-                p = row['ID_Prefix'] if not pd.isna(row['ID_Prefix']) else "UNK"
-                t = str(row[C_TYPE])[0].upper() if pd.notna(row[C_TYPE]) else "X"
-                return f"{p}-{t}{row['ID_Number']:02d}"
-
-            df['Name'] = df.apply(gen_id, axis=1)
+            df['ID_Prefix'] = df[S_TITLE].map(get_prefix_logic)
+            df['ID_Number'] = df.groupby([S_TITLE, S_TYPE]).cumcount() + 1
+            df['Name'] = df.apply(lambda
+                                      r: f"{r['ID_Prefix'] if not pd.isna(r['ID_Prefix']) else 'UNK'}-{str(r[S_TYPE])[0].upper() if pd.notna(r[S_TYPE]) else 'X'}{r['ID_Number']:02d}",
+                                  axis=1)
             df = df.drop(columns=['ID_Prefix', 'ID_Number'])
 
-        # Formatowanie godzin przed ewentualnym scaleniem
-        for c in [C_START, C_END]:
-            if c in df.columns:
-                df[c] = df[c].astype(str).str.strip().apply(lambda x: x.zfill(5) if ':' in x else x)
+        for c in [S_START, S_END]:
+            if c in df.columns: df[c] = df[c].astype(str).str.strip().apply(lambda x: x.zfill(5) if ':' in x else x)
 
-        cols_order = ['Name'] if 'Name' in df.columns else []
-        if C_DATE in df.columns: cols_order.append(C_DATE)
+        if all(c in df.columns for c in [S_DATA, S_START, S_END]):
+            df[S_DATA] = df[S_DATA].astype(str).str.strip()
+            c_end_key = 'Data_End_Integrated'
+            if (date_mode == 'integrated') or (c_end_key in extra_cols):
+                df[c_end_key] = df[S_DATA] + ' ' + df[S_END]
+                if date_mode == 'integrated':
+                    df[S_DATA] = df[S_DATA] + ' ' + df[S_START]
+                    df = df.drop(columns=[S_START, S_END], errors='ignore')
 
-        # Obsługa Integrated (Custom name + Drop source cols)
-        if date_mode == 'integrated' and all(c in df.columns for c in [C_DATE, C_START, C_END]):
-            df[C_DATE] = df[C_DATE].astype(str).str.strip()
-
-            # Pobieramy nazwę kolumny końcowej z mapowania (lub domyślną)
-            c_end_target_name = active_map.get('Data_End_Integrated', 'Encounter End')
-
-            df[c_end_target_name] = df[C_DATE] + ' ' + df[C_END]
-            df[C_DATE] = df[C_DATE] + ' ' + df[C_START]
-
-            # Usuwamy kolumny źródłowe
-            df = df.drop(columns=[C_START, C_END], errors='ignore')
-            cols_order.append(c_end_target_name)
-
-        # Finalna zamiana nazw
         df = df.rename(columns=active_map)
 
-        # Sortowanie kolumn
-        remain = [c for c in df.columns if c not in cols_order]
-        df = df[cols_order + remain]
+        # --- FINALNE SORTOWANIE I FILTROWANIE ---
+        if mode in ['1', '2']:
+            final_columns = []
 
-        # Sortowanie wierszy (jeśli kolumna Data istnieje po rename)
-        # Musimy znaleźć obecną nazwę kolumny Data
-        target_data_col = active_map.get('Data', 'Data')
-        if target_data_col in df.columns:
-            df = df.sort_values(by=[target_data_col])
+            # Krok 1: Określ mapowane nazwy kluczowych kolumn
+            T_CODE = active_map.get('Name', 'Name')
+            T_NAME = active_map.get('Tytuł', 'Tytuł')
+            T_TYPE = active_map.get('Typ', 'Typ')  # Pobieramy nazwę dla Typu
+            T_DATA = active_map.get('Data', 'Data')
+            T_END = active_map.get('Data_End_Integrated', 'Data_End_Integrated')
+            T_ROOM = active_map.get('Miejsce', 'Miejsce')
 
-        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+            # Krok 2: Ustal Priorytetową Kolejność (Typ po Nazwie)
+            # Używamy tej samej logiki co LOGICAL_ORDER, ale mapowanej na nazwy końcowe
+            # Logic: Kod -> Nazwa -> Typ -> Data -> Początek/Koniec/Zakończenie -> Sala -> Reszta
+
+            # Zbudujmy listę priorytetów z uwzględnieniem trybu daty
+            priority_names = []
+
+            # Kod, Nazwa, Typ - zawsze
+            priority_names.append(T_CODE)
+            priority_names.append(T_NAME)
+            priority_names.append(T_TYPE)
+
+            # Daty
+            priority_names.append(T_DATA)  # Data (start w integrated)
+            if date_mode == 'standard':
+                # W standardzie mamy Od i Do jako osobne
+                priority_names.append(active_map.get('Ogłoszony początek', 'Ogłoszony początek'))
+                priority_names.append(active_map.get('Ogłoszony koniec', 'Ogłoszony koniec'))
+
+            # Zakończenie (jeśli jest, głównie integrated)
+            priority_names.append(T_END)
+
+            # Sala
+            priority_names.append(T_ROOM)
+
+            # Krok 3: Zbuduj listę kolumn wybranych przez użytkownika
+            user_selected_mapped = []
+            for src in extra_cols:
+                # Logika ignorowania wchłoniętych kolumn w trybie integrated
+                if date_mode == 'integrated' and src in ['Ogłoszony początek', 'Ogłoszony koniec']: continue
+                if date_mode == 'integrated' and src == 'Data':
+                    tgt = active_map.get('Data', 'Data');
+                    user_selected_mapped.append(tgt)
+                    tgt_e = active_map.get('Data_End_Integrated', 'Data_End_Integrated')
+                    if tgt_e not in user_selected_mapped: user_selected_mapped.append(tgt_e)
+                    continue
+
+                tgt = active_map.get(src, src)
+                if tgt in df.columns: user_selected_mapped.append(tgt)
+
+            # Krok 4: Sklejanie (Priorytety TYLKO jeśli wybrane + Reszta z wyboru użytkownika)
+
+            # Najpierw dodajemy priorytetowe, ale TYLKO te, które użytkownik wybrał (są w user_selected_mapped)
+            for p in priority_names:
+                if p in user_selected_mapped and p not in final_columns:
+                    final_columns.append(p)
+
+            # Potem dodajemy całą resztę wybraną przez użytkownika (której nie ma jeszcze w final_columns)
+            for u in user_selected_mapped:
+                if u not in final_columns:
+                    final_columns.append(u)
+
+            if final_columns: df = df[final_columns]
+
+        # Sortowanie wierszy po dacie
+        if active_map.get('Data', 'Data') in df.columns:
+            df = df.sort_values(by=[active_map.get('Data', 'Data')])
 
         print("\n--- ZAPIS ---")
-        base = input("Nazwa pliku (ENTER=auto): ").strip()
-        base = re.sub(r'\.(csv|xlsx|xls)$', '', base, flags=re.I) or "przetworzony_plan"
+        base = input("Nazwa pliku (ENTER=auto): ").strip() or "przetworzony_plan"
 
         def save(df, ext, bn):
             fn = get_unique_filename(bn + ext)
@@ -658,7 +729,6 @@ def main():
 
         if save_format in ['csv', 'both']: save(df, '.csv', base)
         if save_format in ['xlsx', 'both']: save(df, '.xlsx', base)
-
         print("\n✨ Gotowe!")
 
 
