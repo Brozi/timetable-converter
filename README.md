@@ -27,7 +27,8 @@ radzić sobie z formatem stosowanym przez UniTime.
 ## Instalacja i Uruchomienie
 1. Pobierz plik `.exe` z zakładki [Releases](https://github.com/Brozi/timetable-converter/releases).
 2. Umieść plik w osobnym folderze
-3. Uruchom plik. Program sam utworzy potrzebne pliki konfiguracyjne.
+3. Na ostrzeżeniu Defendera kliknij "Więcej informacji", a następnie "Uruchom mimo to"
+4. Program sam wygeneruje pliki konfiguracyjne
 ## Jak korzystać? 
 Program posiada kilka przydatnych funkcji, które 
 ułatwiają dostosowanie pliku wyjściowego do własnych potrzeb. 
