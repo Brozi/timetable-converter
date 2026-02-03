@@ -1,6 +1,6 @@
 # Konwerter planów zajęć AGH z UniTime do Notion
 Program ten został stworzony w celu konwersji plików .csv pobieranych z UniTime AGH ze stosowanego tam formatu 
-(definiowanie czasu trwania zajęć "zakresami") do formatu 
+(definiowanie zakresów powtarzających się zajęć "blokami") do formatu 
 umożliwiającego zapis całego planu do bazy danych w Notion 
 (może działać również w innych miejscach, niemniej jednak 
 taki był pierwotny cel). Program umieszcza każde wystąpienie 
