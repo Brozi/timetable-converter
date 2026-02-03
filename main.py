@@ -15,10 +15,11 @@ CONFIG_FILE = 'settings.json'
 
 # --- DOMYŚLNE MAPOWANIE (Klucze to kolumny WYMAGANE w pliku źródłowym) ---
 DEFAULT_MAPA_KOLUMN = {
+    'Nazwa': 'ID',
     'Data': 'Data',
     'Tytuł': 'Przedmiot',
-    'Ogłoszony początek': 'Od',
-    'Ogłoszony koniec': 'Do',
+    'Ogłoszony początek': 'Godzina rozpoczęcia',
+    'Ogłoszony koniec': 'Godzina zakończenia',
     'Miejsce': 'Sala',
     'Typ': 'Typ',
     'Data_End_Integrated': 'Data końca zajęć'
