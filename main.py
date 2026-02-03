@@ -10,7 +10,6 @@ from io import StringIO
 CONFIG_FILE = 'settings.json'
 
 # --- DEFINICJA LOGICZNEJ KOLEJNOŚCI (DLA UI ORAZ SORTOWANIA WYNIKU) ---
-# To zapewnia, że wszędzie kolumny wyświetlają się w tej samej, logicznej grupie
 LOGICAL_ORDER = [
     'Name',  # Kod przedmiotu
     'Tytuł',  # Nazwa przedmiotu
@@ -210,7 +209,6 @@ def customize_column_mapping(current_full_map, active_columns, date_mode='standa
         if 'Ogłoszony koniec' in keys_to_show: keys_to_show.remove('Ogłoszony koniec')
 
     # 2. Sortowanie wyświetlania zgodnie z LOGICAL_ORDER
-    # Zapewnia to, że mapowanie ma taką samą kolejność jak wybór kolumn
     sorted_keys = []
     for k in LOGICAL_ORDER:
         if k in keys_to_show: sorted_keys.append(k)
@@ -230,10 +228,10 @@ def customize_column_mapping(current_full_map, active_columns, date_mode='standa
         elif k == 'Data_End_Integrated':
             source_label = "Data zakończenia"
         elif k in FRIENDLY_NAME_MAP:
-            source_label = f"{FRIENDLY_NAME_MAP[k]} ({k})"
+            source_label = f"{FRIENDLY_NAME_MAP[k]}"
         print(f"  * {source_label:35} -> {target_name}")
 
-    if input("\nZmienić nazwy docelowe? (t/n): ").strip().lower() != 't': return display_map
+    if input("\nZmienić nazwy docelowe? [t/n]: ").strip().lower() != 't': return display_map
 
     print("\nWpisz nową nazwę lub ENTER by zostawić.")
     for src in keys_to_show:
@@ -263,7 +261,7 @@ def customize_prefixes(df, col_title_name):
         current_val = prefix_map.get(clean_name, default_val)
         print(f"  * {clean_name:30} [{current_val}]")
 
-    if input("\nEdytować skróty? (t/n): ").strip().lower() != 't':
+    if input("\nEdytować skróty? [t/n]: ").strip().lower() != 't':
         final_map = prefix_map.copy()
         for c in courses:
             clean_name = clean_text_for_notion(c)
@@ -290,36 +288,25 @@ def select_columns_ui(all_columns, preselected_extras, required_columns, date_mo
     for c in all_columns:
         if c not in available_cols: available_cols.append(c)
 
-    # 2. Sortowanie logiczne w menu wg LOGICAL_ORDER
+    # 2. Sortowanie logiczne w menu
     sorted_available = []
-    # Dodaj priorytetowe
     for key in LOGICAL_ORDER:
-        if key in available_cols:
-            sorted_available.append(key)
-    # Dodaj resztę
+        if key in available_cols: sorted_available.append(key)
     for c in available_cols:
-        if c not in sorted_available:
-            sorted_available.append(c)
-
+        if c not in sorted_available: sorted_available.append(c)
     available_cols = sorted_available
 
     # 3. Obsługa Domyślnych Zaznaczeń (Jeśli lista jest pusta)
-    # Usuwamy śmieci z zaznaczenia na start
     selected_extras = {c for c in selected_extras if c in available_cols}
-
     if not selected_extras:
-        # Domyślne zestawienie
         defaults = {'Name', 'Tytuł', 'Typ', 'Miejsce', 'Data'}
-
         if date_mode == 'standard':
             defaults.add('Ogłoszony początek')
             defaults.add('Ogłoszony koniec')
         elif date_mode == 'integrated':
             defaults.add('Data_End_Integrated')
-
         for d in defaults:
-            if d in available_cols:
-                selected_extras.add(d)
+            if d in available_cols: selected_extras.add(d)
 
     while True:
         print("\n--- WYBÓR KOLUMN DO ZACHOWANIA ---")
@@ -331,36 +318,75 @@ def select_columns_ui(all_columns, preselected_extras, required_columns, date_mo
             display_name = col
             note = ""
             if col == 'Name':
-                display_name = "Kod przedmiotu"; note = " (kolumna wtórna)"
+                display_name = "Kod przedmiotu";
+                note = " (kolumna wtórna)"
             elif col == 'Data_End_Integrated':
-                display_name = "Data zakończenia"; note = " (kolumna wtórna)"
+                display_name = "Data zakończenia";
+                note = " (kolumna wtórna)"
             elif col in FRIENDLY_NAME_MAP:
-                display_name = f'{FRIENDLY_NAME_MAP[col]}'
+                display_name = FRIENDLY_NAME_MAP[col]
 
             print(f"{i + 1:2}. {status} {display_name}{note}")
 
         print("-" * 50)
-        print("Wpisz numer kolumny, aby przełączyć jej stan ([x]/[ ]).")
-        print("Aby zatwierdzić wybór (musi być zaznaczona min. 1), wpisz 'ok' lub naciśnij ENTER.")
+        print("• Wpisz numer, aby przełączyć ([x]/[ ]).")
+        print("• Szybka selekcja (grupowa):")
+        print("  - '0 +1,2,3' -> Wyczyść wszystko i dodaj 1, 2, 3.")
+        print("  - '* -5,9'   -> Zaznacz wszystko i usuń 5, 9.")
+        print("• ENTER = Zatwierdź.")
+
         choice = input(">> ").strip().lower()
 
-        if choice in ['ok', '', ' ']:
+        if choice in ['ok', '']:
             if len(selected_extras) >= 1:
                 break
             else:
-                print("⚠️ BŁĄD: Musisz wybrać co najmniej jedną kolumnę!"); continue
+                print("⚠️ BŁĄD: Musisz wybrać co najmniej jedną kolumnę!");
+                continue
 
-        try:
-            nums = [int(x) - 1 for x in choice.replace(',', ' ').split() if x.strip().isdigit()]
-            for idx in nums:
-                if 0 <= idx < len(available_cols):
-                    col_name = available_cols[idx]
-                    if col_name in selected_extras:
-                        selected_extras.remove(col_name)
-                    else:
-                        selected_extras.add(col_name)
-        except:
-            pass
+        # --- NOWA LOGIKA PARSOWANIA (Z obsługa grup po przecinku) ---
+        # Dzielimy najpierw po spacjach, żeby wyodrębnić grupy, np: "0", "+1,2,3"
+        parts = choice.split()
+
+        # Najpierw flagi globalne
+        if '*' in parts or 'all' in parts:
+            selected_extras = set(available_cols)
+        elif '0' in parts or 'none' in parts:
+            selected_extras = set()
+
+        for part in parts:
+            if part in ['*', 'all', '0', 'none', 'ok']: continue
+
+            # Ustalamy tryb operacji dla danej grupy
+            mode = 'toggle' # domyślny dla samych liczb
+            content = part
+
+            if part.startswith('-'):
+                mode = 'remove'
+                content = part[1:] # usuwamy minus
+            elif part.startswith('+'):
+                mode = 'add'
+                content = part[1:] # usuwamy plus
+
+            # Dzielimy zawartość grupy po przecinkach
+            numbers = content.split(',')
+
+            for n_str in numbers:
+                if n_str.strip().isdigit():
+                    idx = int(n_str.strip()) - 1
+                    if 0 <= idx < len(available_cols):
+                        col_name = available_cols[idx]
+
+                        if mode == 'remove':
+                            if col_name in selected_extras: selected_extras.remove(col_name)
+                        elif mode == 'add':
+                            selected_extras.add(col_name)
+                        elif mode == 'toggle':
+                            # Dla "1,2,3" bez prefiksu, przełączamy
+                            if col_name in selected_extras:
+                                selected_extras.remove(col_name)
+                            else:
+                                selected_extras.add(col_name)
 
     return list(selected_extras)
 
@@ -398,9 +424,8 @@ def configure_quick_settings():
     extras = qc.get('extra_columns', [])
     print(f"\n4. DODATKOWE KOLUMNY [Wybrane: {len(extras)}]")
     if extras:
-        # Sortujemy również wyświetlanie w podglądzie
+        # Sortowanie wyświetlania
         pretty = []
-        # Sortowanie wg LOGICAL_ORDER
         sorted_extras = []
         for k in LOGICAL_ORDER:
             if k in extras: sorted_extras.append(k)
@@ -420,19 +445,22 @@ def configure_quick_settings():
     else:
         print("   (Brak dodatkowych kolumn)")
 
-    if input("   Edytować listę? (t/n): ").strip().lower() == 't':
+    if input("   Edytować listę? [t/n]: ").strip().lower() == 't':
         print("\n   Aby wybrać kolumny, potrzebuję przykładowego pliku CSV.")
         path = input("   Podaj ścieżkę do pliku: ").strip().strip('"')
         if os.path.exists(path):
             try:
                 raw = load_data(path)
-                # Cleanup dla konfiguracji
                 bad_cols = ['Zatwierdzony', 'Żądane usługi', 'Unnamed: 16', 'Nazwa']
                 raw.drop(columns=[c for c in bad_cols if c in raw.columns], inplace=True)
 
                 all_cols = raw.columns.tolist()
+
+                # --- NAPRAWA BRAKUJĄCEJ KOLUMNY DATA ---
+                if 'Data' not in all_cols:
+                    all_cols.append('Data')
+
                 req_cols = list(DEFAULT_MAPA_KOLUMN.keys())
-                # Przekazujemy date_mode, żeby poprawnie ustalić domyślne zaznaczenia
                 new_extras = select_columns_ui(all_cols, extras, req_cols, date_mode=qc['date_mode'])
                 qc['extra_columns'] = new_extras
                 print(f"   ✅ Zaktualizowano listę.")
@@ -442,10 +470,10 @@ def configure_quick_settings():
             print("   ❌ Plik nie istnieje.")
 
     print(f"\n5. NAZWY KOLUMN (MAPOWANIE)")
-    if input("   Edytować? (t/n): ").strip().lower() == 't':
+    if input("   Edytować? [t/n]: ").strip().lower() == 't':
         customize_column_mapping(CURRENT_CONFIG['column_mapping'], qc['extra_columns'], qc['date_mode'])
     print(f"\n6. SKRÓTY ID")
-    if input("   Edytować? (t/n): ").strip().lower() == 't':
+    if input("   Edytować? [t/n]: ").strip().lower() == 't':
         print("\n   Aby skonfigurować skróty, potrzebuję przykładowego pliku CSV.")
         path = input("   Podaj ścieżkę do pliku: ").strip().strip('"')
         if os.path.exists(path):
@@ -503,7 +531,7 @@ def main():
         if ch == '2': configure_quick_settings(); continue
         if ch != '1': continue
 
-        path = input("Ścieżka CSV: ").strip().strip('"')
+        path = input("Podaj ścieżkę do pliku CSV lub przeciągnij go do tego okna: ").strip().strip('"')
         if not os.path.exists(path): print("❌ Brak pliku."); continue
 
         try:
@@ -531,9 +559,9 @@ def main():
         mode = ''
         while mode not in ['1', '2', '3']: mode = input("Wybór [1/2/3]: ").strip()
 
-        type_mode = 'detailed';
-        date_mode = 'standard';
-        save_format = 'xlsx'
+        type_mode = 'simple';
+        date_mode = 'integrated';
+        save_format = 'both'
         active_map = CURRENT_CONFIG['column_mapping'].copy()
         custom_prefixes = {};
         extra_cols = []
@@ -566,15 +594,20 @@ def main():
             print("\n--- FORMATOWANIE DAT I GODZIN ---")
             print("1 = Standard   (Osobne kolumny: 'Data', 'Od', 'Do')")
             print("2 = Integrated (Kolumny scalone: 'Data' (data+start) i 'Do' (data+koniec))")
-            if input("Wybór [1/2]: ") == '2': date_mode = 'integrated'
+            if input("Wybór [1/2]: ") == '1': date_mode = 'standard'
 
             # Przekazujemy date_mode do UI aby ustalić domyślne zaznaczenia
             extra_cols = select_columns_ui(all_cols, preselected, source_key_cols, date_mode=date_mode)
 
+            # --- ZAPAMIĘTYWANIE WYBORU (PERSISTENCE) ---
+            CURRENT_CONFIG['quick_settings']['extra_columns'] = extra_cols
+            save_config()
+
             print("\n--- FORMATOWANIE TYPÓW ZAJĘĆ ---")
             print("1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
             print("2 = Detailed (Zachowuje oryginalne skróty: CWP, CWL, KON)")
-            if input("Wybór [1/2]: ") == '1': type_mode = 'simple'
+            if input("Wybór [1/2]: ") == '2' : type_mode = 'integrated'
+            print(type_mode)
 
             active_map = customize_column_mapping(active_map, extra_cols, date_mode)
             df['Tytuł'] = df['Tytuł'].apply(clean_text_for_notion)
@@ -588,10 +621,11 @@ def main():
             sf = input("Wybór [1/2/3]: ")
             if sf == '1':
                 save_format = 'csv'
-            elif sf == '3':
-                save_format = 'both'
+            elif sf == '2':
+                save_format = 'xlsx'
 
         elif mode == '3':
+            save_format = 'xlsx'
             extra_cols = df.columns.tolist()
 
         # --- PRZETWARZANIE ---
@@ -611,7 +645,8 @@ def main():
                 def map_d(v):
                     v = str(v).strip()
                     m = {'Wykład': 'W', 'Ćwiczenia projektowe': 'CWP', 'Ćwiczenia laboratoryjne': 'CWL',
-                         'Konwersatorium': 'KON', 'Lektorat': 'LEK', 'Ćwiczenia audytoryjne': 'CWA'}
+                         'Konwersatorium': 'KON', 'Lektorat': 'LEK', 'Ćwiczenia audytoryjne': 'CWA',
+                         'Zajęcia warsztatowe': 'WAR'}
                     return m.get(v, v[:3].upper())
 
                 df[S_TYPE] = df[S_TYPE].apply(map_d)
@@ -656,28 +691,15 @@ def main():
             T_ROOM = active_map.get('Miejsce', 'Miejsce')
 
             # Krok 2: Ustal Priorytetową Kolejność (Typ po Nazwie)
-            # Używamy tej samej logiki co LOGICAL_ORDER, ale mapowanej na nazwy końcowe
-            # Logic: Kod -> Nazwa -> Typ -> Data -> Początek/Koniec/Zakończenie -> Sala -> Reszta
-
-            # Zbudujmy listę priorytetów z uwzględnieniem trybu daty
             priority_names = []
-
-            # Kod, Nazwa, Typ - zawsze
             priority_names.append(T_CODE)
             priority_names.append(T_NAME)
             priority_names.append(T_TYPE)
-
-            # Daty
-            priority_names.append(T_DATA)  # Data (start w integrated)
+            priority_names.append(T_DATA)
             if date_mode == 'standard':
-                # W standardzie mamy Od i Do jako osobne
                 priority_names.append(active_map.get('Ogłoszony początek', 'Ogłoszony początek'))
                 priority_names.append(active_map.get('Ogłoszony koniec', 'Ogłoszony koniec'))
-
-            # Zakończenie (jeśli jest, głównie integrated)
             priority_names.append(T_END)
-
-            # Sala
             priority_names.append(T_ROOM)
 
             # Krok 3: Zbuduj listę kolumn wybranych przez użytkownika
@@ -696,13 +718,10 @@ def main():
                 if tgt in df.columns: user_selected_mapped.append(tgt)
 
             # Krok 4: Sklejanie (Priorytety TYLKO jeśli wybrane + Reszta z wyboru użytkownika)
-
-            # Najpierw dodajemy priorytetowe, ale TYLKO te, które użytkownik wybrał (są w user_selected_mapped)
             for p in priority_names:
                 if p in user_selected_mapped and p not in final_columns:
                     final_columns.append(p)
 
-            # Potem dodajemy całą resztę wybraną przez użytkownika (której nie ma jeszcze w final_columns)
             for u in user_selected_mapped:
                 if u not in final_columns:
                     final_columns.append(u)
