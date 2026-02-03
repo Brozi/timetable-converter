@@ -15,7 +15,6 @@ CONFIG_FILE = 'settings.json'
 
 # --- DOMYŚLNE MAPOWANIE (Klucze to kolumny WYMAGANE w pliku źródłowym) ---
 DEFAULT_MAPA_KOLUMN = {
-    'Nazwa': 'ID',
     'Data': 'Data',
     'Tytuł': 'Przedmiot',
     'Ogłoszony początek': 'Godzina rozpoczęcia',
