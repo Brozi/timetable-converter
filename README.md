@@ -26,12 +26,11 @@ zajęć w planie. Ułatwia to importowanie pliku do Notion lub innych aplikacji
 radzić sobie z formatem stosowanym przez UniTime.
 ## Instalacja i Uruchomienie
 1. Pobierz plik `.exe` z zakładki [Releases](https://github.com/Brozi/timetable-converter/releases).
-2. Umieść go w jakimś folderze, bo 
-program generuje pliki konfiguracyjne podczas pracy
+2. Umieść plik w osobnym folderze
 3. Uruchom plik. Program sam utworzy potrzebne pliki konfiguracyjne.
 ## Jak korzystać? 
 Program posiada kilka przydatnych funkcji, które 
-ułatwiają dostosowanie outputu do własnych potrzeb. 
+ułatwiają dostosowanie pliku wyjściowego do własnych potrzeb. 
 ### Wybór funkcjonalności
 Po uruchomieniu programu widoczne są trzy możliwe działania
 ```terminal
@@ -45,6 +44,42 @@ Wybór:
 ```
 Wybór "1" umożliwia bezpośrednie przejście do funkcji wczytywania pliku CSV.
 
-Wybór "2" powoduje przejście do menu konfiguracji jednego z trybów działania programu
+Wybór "2" powoduje przejście do menu konfiguracji trybu Quick.
 
 Wybór "3" powoduje zakończenie działania programu.
+
+### Tryby działania programu
+Program po wyborze opcji "Wczytaj plik" oraz przejściu przez menu filtrowania zajęć 
+prezentuje menu wyboru trybu działania
+```terminaloutput
+--- FILTROWANIE WIERSZY ---
+1. Usuń całe PRZEDMIOTY
+2. Usuń całe TYPY zajęć
+3. Dalej
+Wybór: 3
+
+--- TRYB ---
+1 -> 🚀 QUICK (Automat wg ustawień)
+2 -> 🛠️ CUSTOM (Pełna kontrola)
+3 -> 🐛 DEBUG (Excel, surowe dane)
+Wybór: 
+```
+**Tryb Quick** oznacza szybką konwersję, bazowaną na domyślnych ustawieniach, 
+lub tych zdefiniowanych przez użytkownika w menu konfiguracji trybu.  
+
+**Tryb Custom** oznacza możliwość manualnego dopasowania niemal każdego
+aspektu konwersji. Zostanie on szerzej omówiony w dalszej części dokumentacji
+
+**Tryb Debug**  
+W trybie debug jedyne przeprowadzane operacje to "rozwijanie" grup
+przedmiotów na pojedyncze wiersze oraz dodanie kolumny z datą zajęć.
+Program nie tworzy nowych kolumn. Zachowywane są również typy zajęć, 
+jednakże następuje skrócenie ich formy. Prawdopodobnie nie wszystkie typy zajęć
+zostały przewidziane, więc dla tych typów program skraca ich nazwy do trzech pierwszych 
+liter.  
+Tryb debug nie powinien mieć zastosowania dla zwykłych użytkowników, jednakże 
+został w kodzie, aby umożliwić ewentualne rozwiązywanie różnego rodzaju problemów 
+z działaniem programu (aby łatwiej było ustalić, na którym etapie występuje problem)
+### Opis działania trybu Custom
+
+

@@ -14,13 +14,13 @@ CONFIG_FILE = 'settings.json'
 
 # --- DOMYŚLNE MAPOWANIE (Klucze to kolumny WYMAGANE w pliku źródłowym) ---
 DEFAULT_MAPA_KOLUMN = {
-    'Data': 'Date',
+    'Data': 'Data',
     'Tytuł': 'Przedmiot',
     'Ogłoszony początek': 'Od',
     'Ogłoszony koniec': 'Do',
-    'Miejsce': 'Venue',
-    'Typ': 'Type',
-    'Data_End_Integrated': 'End Date'
+    'Miejsce': 'Sala',
+    'Typ': 'Typ',
+    'Data_End_Integrated': 'Data końca zajęć'
 }
 
 # --- DOMYŚLNA KONFIGURACJA ---
@@ -569,6 +569,10 @@ def main():
                     if v == 'Konwersatorium': return 'KON'
                     if v == 'Lektorat': return 'LEK'
                     if v == 'Ćwiczenia audytoryjne': return 'CWA'
+                    if v == 'Basen' : return 'Basen'
+                    if v == 'Zajęcia Warsztatowe': return 'WAR'
+                    if v == 'Wychowanie fizyczne' : return 'WF'
+                    if v == 'Wychowanie fizyczne2': return 'WF'
 
                     # Jeśli nie znaleziono powyżej -> 3 pierwsze litery wielkimi literami
                     # np. "Seminarium" -> "SEM", "Projekt" -> "PRO"
@@ -607,7 +611,7 @@ def main():
         cols_order = ['Name'] if 'Name' in df.columns else []
         if C_DATE in df.columns: cols_order.append(C_DATE)
 
-        # Zmiana 1 & 2: Obsługa Integrated (Custom name + Drop source cols)
+        # Obsługa Integrated (Custom name + Drop source cols)
         if date_mode == 'integrated' and all(c in df.columns for c in [C_DATE, C_START, C_END]):
             df[C_DATE] = df[C_DATE].astype(str).str.strip()
 
