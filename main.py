@@ -23,7 +23,7 @@ LOGICAL_ORDER = [
     'Pojemność'
 ]
 
-# --- PRZYJAZNE NAZWY DLA MENU WYBORU (tylko wyświetlanie) ---
+# --- PRZYJAZNE NAZWY DLA MENU WYBORU ---
 FRIENDLY_NAME_MAP = {
     'Tytuł': 'Nazwa przedmiotu',
     'Ogłoszony początek': 'Od (godzina)',
