@@ -606,7 +606,7 @@ def main():
             print("\n--- FORMATOWANIE TYPÓW ZAJĘĆ ---")
             print("1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
             print("2 = Detailed (Zachowuje oryginalne skróty: CWP, CWL, KON)")
-            if input("Wybór [1/2]: ") == '2' : type_mode = 'integrated'
+            if input("Wybór [1/2]: ") == '2' : type_mode = 'detailed'
             print(type_mode)
 
             active_map = customize_column_mapping(active_map, extra_cols, date_mode)
@@ -646,7 +646,8 @@ def main():
                     v = str(v).strip()
                     m = {'Wykład': 'W', 'Ćwiczenia projektowe': 'CWP', 'Ćwiczenia laboratoryjne': 'CWL',
                          'Konwersatorium': 'KON', 'Lektorat': 'LEK', 'Ćwiczenia audytoryjne': 'CWA',
-                         'Zajęcia warsztatowe': 'WAR'}
+                         'Zajęcia warsztatowe': 'WAR', 'Wychowanie fizyczne 2': 'WF',
+                         'Wychowanie fizyczne 1': "WF", 'Wychowanie fizyczne 3' : 'WF' }
                     return m.get(v, v[:3].upper())
 
                 df[S_TYPE] = df[S_TYPE].apply(map_d)
