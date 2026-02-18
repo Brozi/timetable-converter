@@ -5,7 +5,7 @@ import os
 import csv
 import json
 from io import StringIO
-
+import ics
 # --- PLIK KONFIGURACYJNY ---
 CONFIG_FILE = 'settings.json'
 

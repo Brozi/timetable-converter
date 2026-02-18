@@ -11,3 +11,5 @@ dist/
 archive/
 *.exe
 Converter For Use/
+install.bat
+mainTest.py
