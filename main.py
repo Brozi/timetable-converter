@@ -7,7 +7,7 @@ import json
 from io import StringIO
 import ics
 # --- PLIK KONFIGURACYJNY ---
-CONFIG_FILE = 'settings.json'
+CONFIG_FILE = 'options.json'
 
 # --- DEFINICJA LOGICZNEJ KOLEJNOŚCI (DLA UI ORAZ SORTOWANIA WYNIKU) ---
 LOGICAL_ORDER = [
