@@ -39,7 +39,7 @@ Po uruchomieniu programu widoczne są trzy możliwe działania
 
 ==================================================
 1. Wczytaj plik
-2. ⚙️ Konfiguracja QUICK
+2. Konfiguracja QUICK
 3. Wyjście
 Wybór:
 ```
@@ -60,9 +60,9 @@ prezentuje menu wyboru trybu działania
 Wybór: 3
 
 --- TRYB ---
-1 -> 🚀 QUICK (Automat wg ustawień)
-2 -> 🛠️ CUSTOM (Pełna kontrola)
-3 -> 🐛 DEBUG (Excel, surowe dane)
+1 -> QUICK (Automat wg ustawień)
+2 -> CUSTOM (Pełna kontrola)
+3 -> DEBUG (Excel, surowe dane)
 Wybór: 
 ```
 **Tryb Quick** oznacza szybką konwersję, bazowaną na domyślnych ustawieniach, 
