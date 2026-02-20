@@ -82,9 +82,9 @@ def load_config():
                     qs.update(loaded['quick_settings'])
                     merged['quick_settings'] = qs
                 CURRENT_CONFIG = merged
-                print(f"✅ Załadowano ustawienia z {CONFIG_FILE}")
+                print(f" Załadowano ustawienia z {CONFIG_FILE}")
         except Exception as e:
-            print(f"⚠️ Błąd odczytu ustawień: {e}. Używam domyślnych.")
+            print(f"️ Błąd odczytu ustawień: {e}. Używam domyślnych.")
             CURRENT_CONFIG = DEFAULT_CONFIG.copy()
     else:
         save_config()
@@ -95,7 +95,7 @@ def save_config():
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(CURRENT_CONFIG, f, indent=4, ensure_ascii=False)
     except Exception as e:
-        print(f"❌ Błąd zapisu ustawień: {e}")
+        print(f" Błąd zapisu ustawień: {e}")
 
 
 # --- FUNKCJE POMOCNICZE ---
@@ -279,7 +279,7 @@ def customize_prefixes(df, col_title_name):
     return prefix_map
 
 
-def select_columns_ui(all_columns, preselected_extras, required_columns, date_mode='standard'):
+def select_columns_ui(all_columns, preselected_extras, date_mode='standard'):
     selected_extras = set(preselected_extras)
 
     # 1. Przygotowanie dostępnych kolumn
@@ -318,10 +318,10 @@ def select_columns_ui(all_columns, preselected_extras, required_columns, date_mo
             display_name = col
             note = ""
             if col == 'Name':
-                display_name = "Kod przedmiotu";
+                display_name = "Kod przedmiotu"
                 note = " (kolumna wtórna)"
             elif col == 'Data_End_Integrated':
-                display_name = "Data zakończenia";
+                display_name = "Data zakończenia"
                 note = " (kolumna wtórna)"
             elif col in FRIENDLY_NAME_MAP:
                 display_name = FRIENDLY_NAME_MAP[col]
@@ -341,7 +341,7 @@ def select_columns_ui(all_columns, preselected_extras, required_columns, date_mo
             if len(selected_extras) >= 1:
                 break
             else:
-                print("⚠️ BŁĄD: Musisz wybrać co najmniej jedną kolumnę!");
+                print(" BŁĄD: Musisz wybrać co najmniej jedną kolumnę!")
                 continue
 
         # --- NOWA LOGIKA PARSOWANIA (Z obsługa grup po przecinku) ---
@@ -396,7 +396,7 @@ def select_columns_ui(all_columns, preselected_extras, required_columns, date_mo
 def configure_quick_settings():
     global CURRENT_CONFIG
     qc = CURRENT_CONFIG['quick_settings']
-    print("\n--- ⚙️ KONFIGURACJA TRYBU QUICK ---")
+    print("\n--- KONFIGURACJA TRYBU QUICK ---")
 
     print(f"\n1. TYPY ZAJĘĆ [Obecnie: {qc['type_mode']}]")
     print("   1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
@@ -461,13 +461,13 @@ def configure_quick_settings():
                     all_cols.append('Data')
 
                 req_cols = list(DEFAULT_MAPA_KOLUMN.keys())
-                new_extras = select_columns_ui(all_cols, extras, req_cols, date_mode=qc['date_mode'])
+                new_extras = select_columns_ui(all_cols, extras, date_mode=qc['date_mode'])
                 qc['extra_columns'] = new_extras
                 print(f"   ✅ Zaktualizowano listę.")
             except Exception as e:
-                print(f"   ❌ Błąd: {e}")
+                print(f"   Błąd: {e}")
         else:
-            print("   ❌ Plik nie istnieje.")
+            print("   Plik nie istnieje.")
 
     print(f"\n5. NAZWY KOLUMN (MAPOWANIE)")
     if input("   Edytować? [t/n]: ").strip().lower() == 't':
@@ -481,34 +481,34 @@ def configure_quick_settings():
                 df_raw = load_data(path)
                 if not df_raw.empty: customize_prefixes(df_raw, 'Tytuł')
             except Exception as e:
-                print(f"   ❌ Błąd: {e}")
+                print(f"   Błąd: {e}")
 
     CURRENT_CONFIG['quick_settings'] = qc
     save_config()
-    print("\n✅ Konfiguracja zapisana!")
+    print("\n Konfiguracja zapisana!")
 
 
 def process_schedule_ranges(df):
     day_map = {'Pn': 0, 'Wt': 1, 'Śr': 2, 'Cz': 3, 'Pt': 4, 'So': 5, 'Nd': 6}
     new_rows = []
     for _, row in df.iterrows():
-        s_str = row['Pierwszy dzień'];
-        e_str = row['Ostatni dzień'];
+        s_str = row['Pierwszy dzień']
+        e_str = row['Ostatni dzień']
         d_str = row['Dzień tygodnia']
         if pd.isna(s_str): continue
         s_date = pd.to_datetime(s_str, dayfirst=True)
         e_date = pd.to_datetime(e_str, dayfirst=True) if not pd.isna(e_str) else s_date
         days = parse_days_of_week(d_str, day_map)
         if not days:
-            r = row.to_dict();
-            r['Data'] = s_date.date();
+            r = row.to_dict()
+            r['Data'] = s_date.date()
             new_rows.append(r)
         else:
             curr = s_date
             while curr <= e_date:
                 if curr.weekday() in days:
-                    r = row.to_dict();
-                    r['Data'] = curr.date();
+                    r = row.to_dict()
+                    r['Data'] = curr.date()
                     new_rows.append(r)
                 curr += datetime.timedelta(days=1)
     return pd.DataFrame(new_rows)
@@ -522,9 +522,9 @@ def main():
 
     while True:
         print("\n" + "=" * 50)
-        print("1. 📄 Wczytaj plik")
-        print("2. ⚙️ Konfiguracja QUICK")
-        print("3. 🔚 Wyjście")
+        print("1. Wczytaj plik")
+        print("2. Konfiguracja QUICK")
+        print("3. Wyjście")
 
         ch = input("Wybór: ").strip()
         if ch == '3' or ch.lower() in ['q', 'exit']: break
@@ -532,7 +532,7 @@ def main():
         if ch != '1': continue
 
         path = input("Podaj ścieżkę do pliku CSV lub przeciągnij go do tego okna: ").strip().strip('"')
-        if not os.path.exists(path): print("❌ Brak pliku."); continue
+        if not os.path.exists(path): print(" Brak pliku."); continue
 
         try:
             raw = load_data(path)
@@ -544,26 +544,26 @@ def main():
             if existing_to_drop: raw.drop(columns=existing_to_drop, inplace=True)
 
         except Exception as e:
-            print(f"❌ Błąd: {e}"); continue
+            print(f" Błąd: {e}"); continue
 
-        print("⏳ Rozwijanie kalendarza...");
+        print(" Rozwijanie kalendarza...")
         df = process_schedule_ranges(raw)
         df = filter_data_interactive(df)
-        if df.empty: print("⚠️ Pusto."); continue
+        if df.empty: print(" Pusto."); continue
 
         print("\n--- TRYB ---")
-        print("1 -> 🚀 QUICK (Automat wg ustawień)")
-        print("2 -> 🛠️ CUSTOM (Pełna kontrola)")
-        print("3 -> 🐛 DEBUG (Excel, surowe dane)")
+        print("1 -> QUICK (Automat wg ustawień)")
+        print("2 -> CUSTOM (Pełna kontrola)")
+        print("3 -> DEBUG (Excel, surowe dane)")
 
         mode = ''
         while mode not in ['1', '2', '3']: mode = input("Wybór [1/2/3]: ").strip()
 
-        type_mode = 'simple';
-        date_mode = 'integrated';
+        type_mode = 'simple'
+        date_mode = 'integrated'
         save_format = 'both'
         active_map = CURRENT_CONFIG['column_mapping'].copy()
-        custom_prefixes = {};
+        custom_prefixes = {}
         extra_cols = []
         source_key_cols = ['Data', 'Tytuł', 'Typ', 'Ogłoszony początek', 'Ogłoszony koniec', 'Miejsce']
 
@@ -572,7 +572,7 @@ def main():
             type_mode, date_mode, save_format = qc['type_mode'], qc['date_mode'], qc['save_format']
             extra_cols = qc.get('extra_columns', [])
             if not extra_cols:
-                # Domyślne jeśli pusty config
+                # Domyślne, jeśli pusty config
                 extra_cols = ['Name', 'Tytuł', 'Typ', 'Data', 'Miejsce']
                 if date_mode == 'integrated':
                     extra_cols.append('Data_End_Integrated')
@@ -597,7 +597,7 @@ def main():
             if input("Wybór [1/2]: ") == '1': date_mode = 'standard'
 
             # Przekazujemy date_mode do UI aby ustalić domyślne zaznaczenia
-            extra_cols = select_columns_ui(all_cols, preselected, source_key_cols, date_mode=date_mode)
+            extra_cols = select_columns_ui(all_cols, preselected, date_mode=date_mode)
 
             # --- ZAPAMIĘTYWANIE WYBORU (PERSISTENCE) ---
             CURRENT_CONFIG['quick_settings']['extra_columns'] = extra_cols
@@ -709,7 +709,7 @@ def main():
                 # Logika ignorowania wchłoniętych kolumn w trybie integrated
                 if date_mode == 'integrated' and src in ['Ogłoszony początek', 'Ogłoszony koniec']: continue
                 if date_mode == 'integrated' and src == 'Data':
-                    tgt = active_map.get('Data', 'Data');
+                    tgt = active_map.get('Data', 'Data')
                     user_selected_mapped.append(tgt)
                     tgt_e = active_map.get('Data_End_Integrated', 'Data_End_Integrated')
                     if tgt_e not in user_selected_mapped: user_selected_mapped.append(tgt_e)
@@ -743,13 +743,13 @@ def main():
                     df.to_csv(fn, index=False, encoding='utf-8-sig', quoting=csv.QUOTE_MINIMAL)
                 else:
                     df.to_excel(fn, index=False)
-                print(f"✅ {fn}")
+                print(f" {fn}")
             except Exception as e:
-                print(f"❌ {e}")
+                print(f" {e}")
 
         if save_format in ['csv', 'both']: save(df, '.csv', base)
         if save_format in ['xlsx', 'both']: save(df, '.xlsx', base)
-        print("\n✨ Gotowe!")
+        print("\n Gotowe!")
 
 
 if __name__ == "__main__":
