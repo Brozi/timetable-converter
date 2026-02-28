@@ -212,19 +212,21 @@ def add_custom_events(df):
                 continue
 
             print("\nDostępne przedmioty w pliku USOS:")
-            unique_subjects = raw['nazwa_przedmiotu'].dropna().unique()
-            for sub in sorted(unique_subjects):
-                print(f" - {sub}")
+            unique_subjects = sorted(raw['nazwa_przedmiotu'].dropna().unique().tolist())
 
-            search_query = input(
-                "\nWpisz dokładną nazwę przedmiotu do dodania (lub jej unikalny fragment): ").strip().lower()
+            for i, sub in enumerate(unique_subjects, 1):
+                print(f" [{i}] {sub}")
 
-            mask = raw['nazwa_przedmiotu'].astype(str).str.lower().str.contains(search_query)
-            matched_raw = raw[mask]
+            choice = input("\nWpisz numer przedmiotu do dodania: ").strip()
 
-            if matched_raw.empty:
-                print(" Nie znaleziono takiego przedmiotu.")
+            if not choice.isdigit() or not (1 <= int(choice) <= len(unique_subjects)):
+                print(" Niepoprawny numer. Spróbuj ponownie.")
                 continue
+
+            selected_subject = unique_subjects[int(choice) - 1]
+
+            mask = raw['nazwa_przedmiotu'] == selected_subject
+            matched_raw = raw[mask]
 
             new_df = pd.DataFrame()
             new_df['Tytuł'] = matched_raw['nazwa_przedmiotu']
@@ -239,8 +241,7 @@ def add_custom_events(df):
 
             df = pd.concat([df, new_df], ignore_index=True) if not df.empty else new_df
 
-            found_names = matched_raw['nazwa_przedmiotu'].unique()
-            print(f" Pomyślnie dodano {len(new_df)} terminów dla: {', '.join(found_names)}")
+            print(f" Pomyślnie dodano {len(new_df)} terminów dla: {selected_subject}")
 
         except Exception as e:
             print(f" Błąd podczas importowania: {e}")
