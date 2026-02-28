@@ -151,7 +151,7 @@ def get_prefix_default(name):
 def clean_text_for_notion(text):
     if pd.isna(text): return ""
     text = str(text)
-    text = re.split(r'[\[]', text)[0]
+    text = re.split(r'[\(\[]', text)[0]
     text = text.replace(',', '')
     text = text.split('.')[0]
     return re.sub(r'\s+', ' ', text).strip()
