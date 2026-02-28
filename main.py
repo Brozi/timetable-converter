@@ -5,6 +5,7 @@ import os
 import csv
 import json
 from io import StringIO
+
 # --- PLIK KONFIGURACYJNY ---
 CONFIG_FILE = 'settings.json'
 
@@ -193,6 +194,60 @@ def filter_data_interactive(df):
     return df
 
 
+def add_custom_events(df):
+    while True:
+        ans = input("\nCzy chcesz zaimportować dodatkowy przedmiot z pliku USOS? (t/n): ").strip().lower()
+        if ans != 't':
+            break
+
+        usos_path = input("Podaj ścieżkę do pliku USOS: ").strip().strip('"')
+        if not os.path.exists(usos_path):
+            print(" Plik nie istnieje.")
+            continue
+
+        try:
+            raw = pd.read_csv(usos_path, sep=';')
+            if 'nazwa_przedmiotu' not in raw.columns:
+                print(" To nie wygląda na poprawny plik USOS (brak kolumny 'nazwa_przedmiotu').")
+                continue
+
+            print("\nDostępne przedmioty w pliku USOS:")
+            unique_subjects = raw['nazwa_przedmiotu'].dropna().unique()
+            for sub in sorted(unique_subjects):
+                print(f" - {sub}")
+
+            search_query = input(
+                "\nWpisz dokładną nazwę przedmiotu do dodania (lub jej unikalny fragment): ").strip().lower()
+
+            mask = raw['nazwa_przedmiotu'].astype(str).str.lower().str.contains(search_query)
+            matched_raw = raw[mask]
+
+            if matched_raw.empty:
+                print(" Nie znaleziono takiego przedmiotu.")
+                continue
+
+            new_df = pd.DataFrame()
+            new_df['Tytuł'] = matched_raw['nazwa_przedmiotu']
+            new_df['Typ'] = matched_raw['rodzaj_zajec'].apply(lambda x: str(x).capitalize() if pd.notna(x) else x)
+            new_df['Data'] = pd.to_datetime(matched_raw['data']).dt.date
+            new_df['Ogłoszony początek'] = matched_raw['poczatek']
+            new_df['Ogłoszony koniec'] = matched_raw['koniec']
+            new_df['Miejsce'] = matched_raw['budynek'].fillna('').astype(str) + ' ' + matched_raw['nr_sali'].fillna(
+                '').astype(str)
+            new_df['Miejsce'] = new_df['Miejsce'].str.strip()
+            new_df['Prowadzący / Odpowiedzialny'] = matched_raw['prowadzacy']
+
+            df = pd.concat([df, new_df], ignore_index=True) if not df.empty else new_df
+
+            found_names = matched_raw['nazwa_przedmiotu'].unique()
+            print(f" Pomyślnie dodano {len(new_df)} terminów dla: {', '.join(found_names)}")
+
+        except Exception as e:
+            print(f" Błąd podczas importowania: {e}")
+
+    return df
+
+
 # --- POPRAWIONE MAPOWANIE ---
 
 def customize_column_mapping(current_full_map, active_columns, date_mode='standard'):
@@ -344,10 +399,8 @@ def select_columns_ui(all_columns, preselected_extras, date_mode='standard'):
                 continue
 
         # --- NOWA LOGIKA PARSOWANIA (Z obsługa grup po przecinku) ---
-        # Dzielimy najpierw po spacjach, żeby wyodrębnić grupy, np: "0", "+1,2,3"
         parts = choice.split()
 
-        # Najpierw flagi globalne
         if '*' in parts or 'all' in parts:
             selected_extras = set(available_cols)
         elif '0' in parts or 'none' in parts:
@@ -356,18 +409,16 @@ def select_columns_ui(all_columns, preselected_extras, date_mode='standard'):
         for part in parts:
             if part in ['*', 'all', '0', 'none', 'ok']: continue
 
-            # Ustalamy tryb operacji dla danej grupy
-            mode = 'toggle' # domyślny dla samych liczb
+            mode = 'toggle'
             content = part
 
             if part.startswith('-'):
                 mode = 'remove'
-                content = part[1:] # usuwamy minus
+                content = part[1:]
             elif part.startswith('+'):
                 mode = 'add'
-                content = part[1:] # usuwamy plus
+                content = part[1:]
 
-            # Dzielimy zawartość grupy po przecinkach
             numbers = content.split(',')
 
             for n_str in numbers:
@@ -381,7 +432,6 @@ def select_columns_ui(all_columns, preselected_extras, date_mode='standard'):
                         elif mode == 'add':
                             selected_extras.add(col_name)
                         elif mode == 'toggle':
-                            # Dla "1,2,3" bez prefiksu, przełączamy
                             if col_name in selected_extras:
                                 selected_extras.remove(col_name)
                             else:
@@ -423,7 +473,6 @@ def configure_quick_settings():
     extras = qc.get('extra_columns', [])
     print(f"\n4. DODATKOWE KOLUMNY [Wybrane: {len(extras)}]")
     if extras:
-        # Sortowanie wyświetlania
         pretty = []
         sorted_extras = []
         for k in LOGICAL_ORDER:
@@ -455,11 +504,9 @@ def configure_quick_settings():
 
                 all_cols = raw.columns.tolist()
 
-                # --- NAPRAWA BRAKUJĄCEJ KOLUMNY DATA ---
                 if 'Data' not in all_cols:
                     all_cols.append('Data')
 
-                req_cols = list(DEFAULT_MAPA_KOLUMN.keys())
                 new_extras = select_columns_ui(all_cols, extras, date_mode=qc['date_mode'])
                 qc['extra_columns'] = new_extras
                 print(f"   ✅ Zaktualizowano listę.")
@@ -530,24 +577,47 @@ def main():
         if ch == '2': configure_quick_settings(); continue
         if ch != '1': continue
 
+        print("\nWybierz format odczytywanego pliku:")
+        print("1 = Unitime (domyślny)")
+        print("2 = USOS")
+        format_choice = input("Wybór [1/2]: ").strip()
+
         path = input("Podaj ścieżkę do pliku CSV lub przeciągnij go do tego okna: ").strip().strip('"')
         if not os.path.exists(path): print(" Brak pliku."); continue
 
         try:
-            raw = load_data(path)
-            if 'Pierwszy dzień' not in raw.columns: raw = pd.read_csv(path, sep=';')
+            if format_choice == '2':
+                raw = pd.read_csv(path, sep=';')
+                df = pd.DataFrame()
+                df['Tytuł'] = raw['nazwa_przedmiotu']
+                df['Typ'] = raw['rodzaj_zajec'].apply(lambda x: str(x).capitalize() if pd.notna(x) else x)
+                df['Data'] = pd.to_datetime(raw['data']).dt.date
+                df['Ogłoszony początek'] = raw['poczatek']
+                df['Ogłoszony koniec'] = raw['koniec']
+                df['Miejsce'] = raw['budynek'].fillna('').astype(str) + ' ' + raw['nr_sali'].fillna('').astype(str)
+                df['Miejsce'] = df['Miejsce'].str.strip()
+                df['Prowadzący / Odpowiedzialny'] = raw['prowadzacy']
+            else:
+                raw = load_data(path)
+                if 'Pierwszy dzień' not in raw.columns: raw = pd.read_csv(path, sep=';')
 
-            # --- USUWANIE ŚMIECIOWYCH KOLUMN ---
-            cols_to_drop = ['Żądane usługi', 'Unnamed: 16', 'Zatwierdzony', 'Nazwa']
-            existing_to_drop = [c for c in cols_to_drop if c in raw.columns]
-            if existing_to_drop: raw.drop(columns=existing_to_drop, inplace=True)
+                # --- USUWANIE ŚMIECIOWYCH KOLUMN ---
+                cols_to_drop = ['Żądane usługi', 'Unnamed: 16', 'Zatwierdzony', 'Nazwa']
+                existing_to_drop = [c for c in cols_to_drop if c in raw.columns]
+                if existing_to_drop: raw.drop(columns=existing_to_drop, inplace=True)
+
+                print(" Rozwijanie kalendarza...")
+                df = process_schedule_ranges(raw)
 
         except Exception as e:
-            print(f" Błąd: {e}"); continue
+            print(f" Błąd: {e}");
+            continue
 
-        print(" Rozwijanie kalendarza...")
-        df = process_schedule_ranges(raw)
         df = filter_data_interactive(df)
+
+        # --- NOWA FUNKCJA - DODAWANIE WŁASNYCH ZAJĘĆ ---
+        df = add_custom_events(df)
+
         if df.empty: print(" Pusto."); continue
 
         print("\n--- TRYB ---")
@@ -605,7 +675,7 @@ def main():
             print("\n--- FORMATOWANIE TYPÓW ZAJĘĆ ---")
             print("1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
             print("2 = Detailed (Zachowuje oryginalne skróty: CWP, CWL, KON)")
-            if input("Wybór [1/2]: ") == '2' : type_mode = 'detailed'
+            if input("Wybór [1/2]: ") == '2': type_mode = 'detailed'
             print(type_mode)
 
             active_map = customize_column_mapping(active_map, extra_cols, date_mode)
@@ -646,7 +716,7 @@ def main():
                     m = {'Wykład': 'W', 'Ćwiczenia projektowe': 'CWP', 'Ćwiczenia laboratoryjne': 'CWL',
                          'Konwersatorium': 'KON', 'Lektorat': 'LEK', 'Ćwiczenia audytoryjne': 'CWA',
                          'Zajęcia warsztatowe': 'WAR', 'Wychowanie fizyczne 2': 'WF',
-                         'Wychowanie fizyczne 1': "WF", 'Wychowanie fizyczne 3' : 'WF' }
+                         'Wychowanie fizyczne 1': "WF", 'Wychowanie fizyczne 3': 'WF'}
                     return m.get(v, v[:3].upper())
 
                 df[S_TYPE] = df[S_TYPE].apply(map_d)
