@@ -158,6 +158,19 @@ def clean_text_for_notion(text):
     return re.sub(r'\s+', ' ', text).strip()
 
 
+def remove_duplicate_words(text):
+    if pd.isna(text): return ""
+    words = str(text).split()
+    seen = set()
+    result = []
+    for w in words:
+        w_lower = w.lower()
+        if w_lower not in seen:
+            seen.add(w_lower)
+            result.append(w)
+    return " ".join(result)
+
+
 def filter_data_interactive(df):
     while True:
         print("\n--- FILTROWANIE WIERSZY ---")
@@ -234,9 +247,8 @@ def add_custom_events(df):
             new_df['Data'] = pd.to_datetime(matched_raw['data']).dt.date
             new_df['Ogłoszony początek'] = matched_raw['poczatek']
             new_df['Ogłoszony koniec'] = matched_raw['koniec']
-            new_df['Miejsce'] = matched_raw['budynek'].fillna('').astype(str) + ' ' + matched_raw['nr_sali'].fillna(
-                '').astype(str)
-            new_df['Miejsce'] = new_df['Miejsce'].str.strip()
+            new_df['Miejsce'] = matched_raw['budynek'].fillna('').astype(str) + ' ' + matched_raw['nr_sali'].fillna('').astype(str)
+            new_df['Miejsce'] = new_df['Miejsce'].apply(remove_duplicate_words)
             new_df['Prowadzący / Odpowiedzialny'] = matched_raw['prowadzacy']
 
             df = pd.concat([df, new_df], ignore_index=True) if not df.empty else new_df
@@ -596,7 +608,7 @@ def main():
                 df['Ogłoszony początek'] = raw['poczatek']
                 df['Ogłoszony koniec'] = raw['koniec']
                 df['Miejsce'] = raw['budynek'].fillna('').astype(str) + ' ' + raw['nr_sali'].fillna('').astype(str)
-                df['Miejsce'] = df['Miejsce'].str.strip()
+                df['Miejsce'] = df['Miejsce'].apply(remove_duplicate_words)
                 df['Prowadzący / Odpowiedzialny'] = raw['prowadzacy']
             else:
                 raw = load_data(path)
