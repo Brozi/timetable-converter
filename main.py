@@ -640,7 +640,7 @@ def main():
 
         mode = ''
         while mode not in ['1', '2', '3']: mode = input("Wybór [1/2/3]: ").strip()
-
+        #Domyślne wartości
         type_mode = 'simple'
         date_mode = 'integrated'
         save_format = 'both'
@@ -689,7 +689,6 @@ def main():
             print("1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
             print("2 = Detailed (Zachowuje oryginalne skróty: CWP, CWL, KON)")
             if input("Wybór [1/2]: ") == '2': type_mode = 'detailed'
-            print(type_mode)
 
             active_map = customize_column_mapping(active_map, extra_cols, date_mode)
             df['Tytuł'] = df['Tytuł'].apply(clean_text_for_notion)
