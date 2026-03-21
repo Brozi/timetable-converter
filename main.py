@@ -573,48 +573,6 @@ def process_schedule_ranges(df):
                 curr += datetime.timedelta(days=1)
     return pd.DataFrame(new_rows)
 
-def dataframe_to_ics(df, filename,
-                    start_col='start_time',
-                    end_col='end_time',
-                    summary_col='summary',
-                    location_col='location',
-                    description_col='description'):
-  """
-  Creates an iCalendar (.ics) file from a pandas DataFrame.
-
-  Args:
-    df: The pandas DataFrame containing event data.
-    filename: The name of the output .ics file.
-    start_col: The name of the column containing start times.
-    end_col: The name of the column containing end times.
-    summary_col: The name of the column containing event summaries.
-    location_col: The name of the column containing event locations.
-    description_col: The name of the column containing event descriptions.
-
-  Returns:
-    None
-  """
-
-  cal = ics.Calendar()
-
-  for index, row in df.iterrows():
-    event = ics.Event()
-    event.name = row[summary_col]
-    event.begin = row[start_col]
-    event.end = row[end_col]
-
-    if location_col in df.columns:
-      event.location = row[location_col]
-
-    if description_col in df.columns:
-      event.description = row[description_col]
-
-    cal.events.add(event)
-
-  #with open(filename, 'w') as f:
-    #f.writelines(cal)
-
-
 # --- MAIN ---
 
 def main():
@@ -740,12 +698,14 @@ def main():
                 custom_prefixes = customize_prefixes(df, col_t)
                 df = df.rename(columns={col_t: 'Tytuł'})
 
-            print("\n[Zapis] 1=CSV, 2=XLSX, 3=Both")
-            sf = input("Wybór [1/2/3]: ")
+            print("\n[Zapis] 1=CSV, 2=XLSX, 3=Both, 4=iCal")
+            sf = input("Wybór [1/2/3/4]: ")
             if sf == '1':
                 save_format = 'csv'
             elif sf == '2':
                 save_format = 'xlsx'
+            elif sf == '4':
+                save_format = 'ical'
 
         elif mode == '3':
             save_format = 'xlsx'
@@ -859,19 +819,68 @@ def main():
         print("\n--- ZAPIS ---")
         base = input("Nazwa pliku (ENTER=auto): ").strip() or "przetworzony_plan"
 
+        def df_to_ics(dataframe,
+                             start_col='start_time',
+                             end_col='end_time',
+                             summary_col='summary',
+                             location_col='location',
+                             description_col='description'):
+            """
+            Creates an iCalendar (.ics) file from a pandas DataFrame.
+
+            Args:
+              df: The pandas DataFrame containing event data.
+              filename: The name of the output .ics file.
+              start_col: The name of the column containing start times.
+              end_col: The name of the column containing end times.
+              summary_col: The name of the column containing event summaries.
+              location_col: The name of the column containing event locations.
+              description_col: The name of the column containing event descriptions.
+
+            Returns:
+              None
+            """
+
+            cal = ics.Calendar()
+
+            for index, row in dataframe.iterrows():
+                event = ics.Event()
+                event.name = row[summary_col]
+                event.begin = row[start_col]
+                event.end = row[end_col]
+
+                if location_col in dataframe.columns:
+                    event.location = row[location_col]
+
+                if description_col in dataframe.columns:
+                    event.description = row[description_col]
+
+                cal.events.add(event)
+
+            # with open(filename, 'w') as f:
+            # f.writelines(cal)
+            return cal
+
         def save(df, ext, bn):
             fn = get_unique_filename(bn + ext)
             try:
                 if ext == '.csv':
                     df.to_csv(fn, index=False, encoding='utf-8-sig', quoting=csv.QUOTE_MINIMAL)
-                else:
+                elif ext == '.xlsx':
                     df.to_excel(fn, index=False)
+                else:
+                    #if date_mode == 'standard':
+                     #   print("Ta opcja jest dostępna tylko w trybie zapisu dat Integrated!")
+                    df_to_ics(df, start_col=T_DATA, end_col=T_END)
                 print(f" {fn}")
             except Exception as e:
                 print(f" {e}")
 
+
+
         if save_format in ['csv', 'both']: save(df, '.csv', base)
         if save_format in ['xlsx', 'both']: save(df, '.xlsx', base)
+        if save_format == 'ical': save(df, '.ics', base)
         print("\n Gotowe!")
 
 
