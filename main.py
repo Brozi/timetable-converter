@@ -4,6 +4,7 @@ import re
 import os
 import csv
 import json
+import ics
 from io import StringIO
 
 # --- PLIK KONFIGURACYJNY ---
@@ -571,6 +572,47 @@ def process_schedule_ranges(df):
                     new_rows.append(r)
                 curr += datetime.timedelta(days=1)
     return pd.DataFrame(new_rows)
+
+def dataframe_to_ics(df, filename,
+                    start_col='start_time',
+                    end_col='end_time',
+                    summary_col='summary',
+                    location_col='location',
+                    description_col='description'):
+  """
+  Creates an iCalendar (.ics) file from a pandas DataFrame.
+
+  Args:
+    df: The pandas DataFrame containing event data.
+    filename: The name of the output .ics file.
+    start_col: The name of the column containing start times.
+    end_col: The name of the column containing end times.
+    summary_col: The name of the column containing event summaries.
+    location_col: The name of the column containing event locations.
+    description_col: The name of the column containing event descriptions.
+
+  Returns:
+    None
+  """
+
+  cal = ics.Calendar()
+
+  for index, row in df.iterrows():
+    event = ics.Event()
+    event.name = row[summary_col]
+    event.begin = row[start_col]
+    event.end = row[end_col]
+
+    if location_col in df.columns:
+      event.location = row[location_col]
+
+    if description_col in df.columns:
+      event.description = row[description_col]
+
+    cal.events.add(event)
+
+  #with open(filename, 'w') as f:
+    #f.writelines(cal)
 
 
 # --- MAIN ---
