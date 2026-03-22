@@ -1,6 +1,5 @@
 import pandas as pd
 import datetime
-from datetime import datetime
 import re
 import os
 import csv
@@ -626,7 +625,7 @@ def main():
                 df = process_schedule_ranges(raw)
 
         except Exception as e:
-            print(f" Błąd: {e}");
+            print(f" Błąd: {e}")
             continue
 
         df = filter_data_interactive(df)
@@ -848,7 +847,7 @@ def main():
 
             for index, row in dataframe.iterrows():
                 event = ics.Event()
-                event.name = row[summary_col]
+                event.name = str(row[active_map.get('Tytuł', 'Tytuł')])
                 event.begin = pd.to_datetime(row[start_col]).tz_localize('Europe/Warsaw')
                 event.end = pd.to_datetime(row[end_col]).tz_localize('Europe/Warsaw')
 
@@ -858,7 +857,7 @@ def main():
                 if description_col in dataframe.columns:
                     event.description = row[description_col]
 
-                cal.events.add(event)
+                cal.events.append(event)
 
             # with open(filename, 'w') as f:
             # f.writelines(cal)
