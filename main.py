@@ -874,7 +874,9 @@ def main():
                 else:
                     #if date_mode == 'standard':
                      #   print("Ta opcja jest dostępna tylko w trybie zapisu dat Integrated!")
-                    df_to_ics(df, start_col=to_datetime(T_DATA), end_col=to_datetime(T_END))
+                    cal = df_to_ics(df, start_col=to_datetime(T_DATA), end_col=to_datetime(T_END))
+                    with open(fn, 'w') as f:
+                        f.writelines(cal)
                 print(f" {fn}")
             except Exception as e:
                 print(f" {e}")
