@@ -1,5 +1,6 @@
 import pandas as pd
 import datetime
+from datetime import datetime
 import re
 import os
 import csv
@@ -862,6 +863,8 @@ def main():
             return cal
 
         def save(df, ext, bn):
+            def to_datetime(date):
+                return datetime.strptime(date, '%m/%d/%y %H:%M:%S')
             fn = get_unique_filename(bn + ext)
             try:
                 if ext == '.csv':
@@ -871,7 +874,7 @@ def main():
                 else:
                     #if date_mode == 'standard':
                      #   print("Ta opcja jest dostępna tylko w trybie zapisu dat Integrated!")
-                    df_to_ics(df, start_col=T_DATA, end_col=T_END)
+                    df_to_ics(df, start_col=to_datetime(T_DATA), end_col=to_datetime(T_END))
                 print(f" {fn}")
             except Exception as e:
                 print(f" {e}")
