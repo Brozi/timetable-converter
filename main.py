@@ -847,7 +847,7 @@ def main():
 
             for index, row in dataframe.iterrows():
                 event = ics.Event()
-                event.name = str(row[active_map.get('Tytuł', 'Tytuł')])
+                event.summary = str(row[active_map.get('Tytuł', 'Tytuł')])
                 event.begin = pd.to_datetime(row[start_col]).tz_localize('Europe/Warsaw')
                 event.end = pd.to_datetime(row[end_col]).tz_localize('Europe/Warsaw')
 
