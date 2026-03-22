@@ -8,6 +8,8 @@ import json
 import ics
 from io import StringIO
 
+from tzdata.zoneinfo import Europe
+
 # --- PLIK KONFIGURACYJNY ---
 CONFIG_FILE = 'settings.json'
 
@@ -847,8 +849,8 @@ def main():
             for index, row in dataframe.iterrows():
                 event = ics.Event()
                 event.name = row[summary_col]
-                event.begin = row[start_col]
-                event.end = row[end_col]
+                event.begin = pd.to_datetime(row[start_col]).tz_localize('Europe/Warsaw')
+                event.end = pd.to_datetime(row[end_col]).tz_localize('Europe/Warsaw')
 
                 if location_col in dataframe.columns:
                     event.location = row[location_col]
@@ -863,8 +865,6 @@ def main():
             return cal
 
         def save(df, ext, bn):
-            def to_datetime(date):
-                return datetime.strptime(date, '%m/%d/%y %H:%M:%S')
             fn = get_unique_filename(bn + ext)
             try:
                 if ext == '.csv':
@@ -874,9 +874,9 @@ def main():
                 else:
                     #if date_mode == 'standard':
                      #   print("Ta opcja jest dostępna tylko w trybie zapisu dat Integrated!")
-                    cal = df_to_ics(df, start_col=to_datetime(T_DATA), end_col=to_datetime(T_END))
-                    with open(fn, 'w') as f:
-                        f.writelines(cal)
+                    cal = df_to_ics(df, start_col=T_DATA, end_col=T_END, summary_col=T_NAME, location_col=T_ROOM)
+                    with open(fn, 'w', encoding='utf-8') as f:
+                        f.write(cal.serialize())
                 print(f" {fn}")
             except Exception as e:
                 print(f" {e}")
