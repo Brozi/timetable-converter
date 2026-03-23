@@ -828,19 +828,19 @@ def main():
                              location_col='location',
                              description_col='description'):
             """
-            Creates an iCalendar (.ics) file from a pandas DataFrame.
+            Tworzenie pliku ics z dataframe pandas.
 
-            Args:
-              df: The pandas DataFrame containing event data.
-              filename: The name of the output .ics file.
-              start_col: The name of the column containing start times.
-              end_col: The name of the column containing end times.
-              summary_col: The name of the column containing event summaries.
-              location_col: The name of the column containing event locations.
-              description_col: The name of the column containing event descriptions.
+            Argumenty:
+              df: Pandas dataframe zawierający kolumny.
+              filename: Nazwa pliku .ics.
+              start_col: Nazwa kolumny zawierającej godziny rozpoczecia.
+              end_col: Nazwa kolumny zawierającej godziny zakończenia.
+              summary_col: Nazwa kolumny zawierającej podsumowanie.
+              location_col: Nazwa kolumny zawierającej lokacje.
+              description_col: Nazwa kolumny zawierającej opisy.
 
-            Returns:
-              None
+            Zwraca:
+              obiekt kalendarza gotowy do zapisu do pliku
             """
 
             cal = ics.Calendar()
@@ -858,9 +858,6 @@ def main():
                     event.description = row[description_col]
 
                 cal.events.append(event)
-
-            # with open(filename, 'w') as f:
-            # f.writelines(cal)
             return cal
 
         def save(df, ext, bn):
@@ -880,8 +877,8 @@ def main():
             except Exception as e:
                 print(f" {e}")
 
-
-
+        if date_mode == 'standard':
+            T_DATA = (active_map.get('Data', 'Data')) + str(active_map.get('Ogłoszony początek', 'Ogłoszony początek'))
         if save_format in ['csv', 'both']: save(df, '.csv', base)
         if save_format in ['xlsx', 'both']: save(df, '.xlsx', base)
         if save_format == 'ical': save(df, '.ics', base)
