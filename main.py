@@ -48,6 +48,7 @@ DEFAULT_MAPA_KOLUMN = {
     'Miejsce': 'Sala',
     'Pojemność': 'Pojemność sali',
     'Prowadzący / Odpowiedzialny': 'Prowadzący',
+    'Grupa': 'Grupa',
     'Typ': 'Typ',
     'Data': 'Data',
     'Data_End_Integrated': 'Data zakończenia'
@@ -639,9 +640,10 @@ def main():
         print("1 -> QUICK (Automat wg ustawień)")
         print("2 -> CUSTOM (Pełna kontrola)")
         print("3 -> DEBUG (Excel, surowe dane)")
+        print("4 -> Eksport do iCal")
 
         mode = ''
-        while mode not in ['1', '2', '3']: mode = input("Wybór [1/2/3]: ").strip()
+        while mode not in ['1', '2', '3', '4']: mode = input("Wybór [1/2/3/4]: ").strip()
         #Domyślne wartości
         type_mode = 'simple'
         date_mode = 'integrated'
@@ -700,8 +702,8 @@ def main():
                 custom_prefixes = customize_prefixes(df, col_t)
                 df = df.rename(columns={col_t: 'Tytuł'})
 
-            print("\n[Zapis] 1=CSV, 2=XLSX, 3=Both, 4=iCal")
-            sf = input("Wybór [1/2/3/4]: ")
+            print("\n[Zapis] 1=CSV, 2=XLSX, 3=Both")
+            sf = input("Wybór [1/2/3]: ")
             if sf == '1':
                 save_format = 'csv'
             elif sf == '2':
@@ -712,6 +714,10 @@ def main():
         elif mode == '3':
             save_format = 'xlsx'
             extra_cols = df.columns.tolist()
+        elif mode == '4':
+            save_format = 'ical'
+            type_mode = 'detailed'
+            date_mode = 'integrated'
 
         # --- PRZETWARZANIE ---
         S_TITLE, S_TYPE, S_DATA, S_START, S_END = 'Tytuł', 'Typ', 'Data', 'Ogłoszony początek', 'Ogłoszony koniec'
@@ -726,7 +732,7 @@ def main():
         if S_TYPE in df.columns:
             if type_mode == 'simple':
                 df[S_TYPE] = df[S_TYPE].apply(lambda x: 'W' if str(x).strip() == 'Wykład' else 'CWA')
-            else:
+            elif type_mode == 'detailed':
                 def map_d(v):
                     v = str(v).strip()
                     m = {'Wykład': 'W', 'Ćwiczenia projektowe': 'CWP', 'Ćwiczenia laboratoryjne': 'CWL',
@@ -771,10 +777,12 @@ def main():
             # Krok 1: Określ mapowane nazwy kluczowych kolumn
             T_CODE = active_map.get('Name', 'Name')
             T_NAME = active_map.get('Tytuł', 'Tytuł')
-            T_TYPE = active_map.get('Typ', 'Typ')  # Pobieramy nazwę dla Typu
+            T_TYPE = active_map.get('Typ', 'Typ')
             T_DATA = active_map.get('Data', 'Data')
             T_END = active_map.get('Data_End_Integrated', 'Data_End_Integrated')
             T_ROOM = active_map.get('Miejsce', 'Miejsce')
+            T_GROUP = active_map.get('Grupa', 'Grupa')
+            T_TEACHER = active_map.get('Prowadzący / Odpowiedzialny', 'Prowadzący / Odpowiedzialny')
 
             # Krok 2: Ustal Priorytetową Kolejność (Typ po Nazwie)
             priority_names = []
@@ -826,7 +834,7 @@ def main():
                              end_col='end_time',
                              summary_col='summary',
                              location_col='location',
-                             description_col='description'):
+                             group_col = 'group', teacher_col = 'teacher', type_col = 'type',description_col = 'description',):
             """
             Tworzenie pliku ics z dataframe pandas.
 
@@ -847,9 +855,10 @@ def main():
 
             for index, row in dataframe.iterrows():
                 event = ics.Event()
-                event.summary = str(row[active_map.get('Tytuł', 'Tytuł')])
+                event.summary = row[summary_col]
                 event.begin = pd.to_datetime(row[start_col]).tz_localize('Europe/Warsaw')
                 event.end = pd.to_datetime(row[end_col]).tz_localize('Europe/Warsaw')
+                event.description = row[type_col] + row[group_col] + row[group_col]
 
                 if location_col in dataframe.columns:
                     event.location = row[location_col]
@@ -870,7 +879,7 @@ def main():
                 else:
                     #if date_mode == 'standard':
                      #   print("Ta opcja jest dostępna tylko w trybie zapisu dat Integrated!")
-                    cal = df_to_ics(df, start_col=T_DATA, end_col=T_END, summary_col=T_NAME, location_col=T_ROOM)
+                    cal = df_to_ics(df, start_col=T_DATA, end_col=T_END, summary_col=T_NAME, location_col=T_ROOM, group_col=T_GROUP, teacher_col=T_TEACHER, type_col=T_TYPE)
                     with open(fn, 'w', encoding='utf-8') as f:
                         f.write(cal.serialize())
                 print(f" {fn}")
