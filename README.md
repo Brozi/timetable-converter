@@ -17,6 +17,12 @@ Program przekształca nieustrukturyzowane pliki w czytelne formaty CSV i XLSX, u
 * **json, os, re, csv** - wbudowane biblioteki do zarządzania konfiguracją, plikami i wyrażeniami regularnymi.
 
 ## Jak uruchomić
+### Gotowy plik .exe
+1.Pobierz plik .exe z zakładki Releases.
+2. Umieść plik w osobnym folderze
+3. Na ostrzeżeniu Defendera kliknij "Więcej informacji", a następnie "Uruchom mimo to"
+4. Program sam wygeneruje pliki konfiguracyjne
+### Skrypt python
 1. Upewnij się, że masz zainstalowanego Pythona oraz bibliotekę pandas (`pip install pandas`).
-2. Uruchom skrypt w terminalu: `python nazwa_skryptu.py`.
-3. Postępuj zgodnie z instrukcjami w oknie konsoli: wskaż plik źródłowy, dostosuj ustawienia (tryb Quick lub Custom) i wybierz format zapisu.
+2. Uruchom skrypt w terminalu: `python main.py`.
+3. Postępuj zgodnie z instrukcjami w oknie konsoli: wskaż plik źródłowy, dostosuj ustawienia i wybierz format zapisu.
