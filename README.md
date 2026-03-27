@@ -23,6 +23,6 @@ Program przekształca nieustrukturyzowane pliki w czytelne formaty CSV i XLSX, u
 3. Na ostrzeżeniu Defendera kliknij "Więcej informacji", a następnie "Uruchom mimo to"
 4. Program sam wygeneruje pliki konfiguracyjne
 ### Skrypt python
-1. Upewnij się, że masz zainstalowanego Pythona oraz bibliotekę pandas (`pip install pandas`).
-2. Uruchom skrypt w terminalu: `python main.py`.
-3. Postępuj zgodnie z instrukcjami w oknie konsoli: wskaż plik źródłowy, dostosuj ustawienia i wybierz format zapisu.
+1. Upewnij się, że masz zainstalowanego Pythona oraz wszystkie biblioteki z listy `requirements.txt` (`pip install -r requirements.txt`). Zalecane środowisko wirtualne (venv)
+3. Uruchom skrypt w terminalu: `python main.py`.
+4. Postępuj zgodnie z instrukcjami w oknie konsoli: wskaż plik źródłowy, dostosuj ustawienia i wybierz format zapisu.
