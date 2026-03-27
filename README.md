@@ -18,7 +18,7 @@ Program przekształca nieustrukturyzowane pliki w czytelne formaty CSV i XLSX, u
 
 ## Jak uruchomić
 ### Gotowy plik .exe
-1.Pobierz plik .exe z zakładki Releases.
+1. Pobierz plik .exe z zakładki Releases.
 2. Umieść plik w osobnym folderze
 3. Na ostrzeżeniu Defendera kliknij "Więcej informacji", a następnie "Uruchom mimo to"
 4. Program sam wygeneruje pliki konfiguracyjne
