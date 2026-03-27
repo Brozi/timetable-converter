@@ -2,7 +2,7 @@
 
 ## Skrócony opis projektu
 Narzędzie CLI (Command Line Interface) napisane w języku Python, służące do automatycznej transformacji i czyszczenia surowych eksportów danych rozkładów zajęć z systemów uczelnianych. 
-Program przekształca nieustrukturyzowane pliki w czytelne formaty CSV i XLSX, ułatwiając dalsze zarządzanie kalendarzem.
+Program przekształca nieustrukturyzowane pliki w czytelne formaty CSV i XLSX, ułatwiając dalsze zarządzanie kalendarzem.  
 [Dokładny opis](How_to_use_it.md)
 ## Główne funkcjonalności
 * **Przetwarzanie danych:** Import i parsowanie danych z systemów USOS oraz Unitime. Rozwijanie zakresów dat do pojedynczych dni.
