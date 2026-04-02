@@ -708,8 +708,8 @@ def main():
                 save_format = 'csv'
             elif sf == '2':
                 save_format = 'xlsx'
-            elif sf == '4':
-                save_format = 'ical'
+            #elif sf == '4':
+                #save_format = 'ical'
 
         elif mode == '3':
             save_format = 'xlsx'
