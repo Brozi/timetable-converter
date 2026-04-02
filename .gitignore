@@ -4,6 +4,7 @@ __pycache__/
 .idea/
 *.csv
 *.xlsx
+*.ics
 settings.json
 build/
 dist/
