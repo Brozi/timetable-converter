@@ -350,7 +350,7 @@ def customize_prefixes(df, col_title_name):
     return prefix_map
 
 
-def select_columns_ui(all_columns, preselected_extras, date_mode='standard'):
+def select_columns_ui(all_columns, preselected_extras, date_mode='standard', mode='1'):
     selected_extras = set(preselected_extras)
 
     # 1. Przygotowanie dostępnych kolumn
@@ -746,6 +746,14 @@ def main():
                 #iterates through all cols in df and takes only those that are in target_cols
                 if keys: df = df[keys]
                 #if keys is not empty, overwrites df columns names
+                # Określ mapowane nazwy kluczowych kolumn
+                T_NAME = active_map.get('Tytuł', 'Tytuł')
+                T_TYPE = active_map.get('Typ', 'Typ')
+                T_DATA = active_map.get('Data', 'Data')
+                T_END = active_map.get('Data_End_Integrated', 'Data_End_Integrated')
+                T_ROOM = active_map.get('Miejsce', 'Miejsce')
+                T_GROUP = active_map.get('Grupa', 'Grupa')
+                T_TEACHER = active_map.get('Prowadzący / Odpowiedzialny', 'Prowadzący / Odpowiedzialny')
 
 
         if S_TYPE in df.columns:
@@ -853,7 +861,7 @@ def main():
                              end_col='end_time',
                              summary_col='summary',
                              location_col='location',
-                             group_col = 'group', teacher_col = 'teacher', type_col = 'type',description_col = 'description',):
+                             group_col = 'group', teacher_col = 'teacher', type_col = 'type',description_col = 'description'):
             """
             Tworzenie pliku ics z dataframe pandas.
 
@@ -896,8 +904,6 @@ def main():
                 elif ext == '.xlsx':
                     df.to_excel(fn, index=False)
                 else:
-                    #if date_mode == 'standard':
-                     #   print("Ta opcja jest dostępna tylko w trybie zapisu dat Integrated!")
                     cal = df_to_ics(df, start_col=T_DATA, end_col=T_END, summary_col=T_NAME, location_col=T_ROOM, group_col=T_GROUP, teacher_col=T_TEACHER, type_col=T_TYPE)
                     with open(fn, 'w', encoding='utf-8') as f:
                         f.write(cal.serialize())
