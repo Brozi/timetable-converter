@@ -651,6 +651,9 @@ def main():
         active_map = CURRENT_CONFIG['column_mapping'].copy()
         custom_prefixes = {}
         extra_cols = []
+        ics_mode_cols = ['Tytuł', 'Typ', 'Data', 'Data_End_Integrated', 'Miejsce', 'Prowadzący / Odpowiedzialny','Grupa']
+        #This list contains columns needed for the ics export mode to
+        #function correctly
         source_key_cols = ['Data', 'Tytuł', 'Typ', 'Ogłoszony początek', 'Ogłoszony koniec', 'Miejsce']
 
         if mode == '1':  # QUICK
@@ -708,16 +711,19 @@ def main():
                 save_format = 'csv'
             elif sf == '2':
                 save_format = 'xlsx'
-            #elif sf == '4':
-                #save_format = 'ical'
 
         elif mode == '3':
             save_format = 'xlsx'
             extra_cols = df.columns.tolist()
         elif mode == '4':
             save_format = 'ical'
-            type_mode = 'detailed'
             date_mode = 'integrated'
+            type_mode = 'simple'
+            #print UI for class type formatting
+            print("\n--- FORMATOWANIE TYPÓW ZAJĘĆ ---")
+            print("1 = Simple   (Wykład -> 'W', reszta -> 'CWA')")
+            print("2 = Detailed (Zachowuje oryginalne skróty: CWP, CWL, KON)")
+            if input("Wybór [1/2]: ") == '2': type_mode = 'detailed'
 
         # --- PRZETWARZANIE ---
         S_TITLE, S_TYPE, S_DATA, S_START, S_END = 'Tytuł', 'Typ', 'Data', 'Ogłoszony początek', 'Ogłoszony koniec'
@@ -728,6 +734,19 @@ def main():
                 if sys in df.columns: target_cols.add(sys)
             keys = [k for k in df.columns if k in target_cols]
             if keys: df = df[keys]
+        elif mode == '4':
+            target_cols = set(ics_mode_cols)
+            #Create a unique set with columns needed for the ics mode
+            for sys in [S_TITLE, S_TYPE, S_DATA, 'Data_End_Integrated', 'Miejsce', 'Prowadzący / Odpowiedzialny', 'Grupa']:
+                # loop through all the critical columns
+                if sys in df.columns: target_cols.add(sys)
+                # checks whether the critical columns are in the current df. If yes, adds
+                #them to target cols
+                keys = [k for k in df.columns if k in target_cols]
+                #iterates through all cols in df and takes only those that are in target_cols
+                if keys: df = df[keys]
+                #if keys is not empty, overwrites df columns names
+
 
         if S_TYPE in df.columns:
             if type_mode == 'simple':
